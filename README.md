@@ -287,13 +287,15 @@ The following function parameter types are recognised:
    code points for printing.
 
  - `Char **`, `Char const **`: pointers to pointers to
-    characters, i.e., pointers to string, will print the print
-   value and then update the pointer to point to the code
+   characters, i.e., pointers to string, will print the string
+   and then update the pointer to point to the code
    unit just behind the last one that was read from the
    string.  With no precision given in the format, they will
    point to the terminating NUL character.  When these
    parameters are printed multiple times using the `=` flag,
-   then the updated value will be used in the next print.
+   the string will be reset each time and the updated value
+   will correspond to the end position during the last print
+   of the string.
 
  - `va_error_t*`: this retrieves the error code from the
    stream and writes it into the passed struct.  This can

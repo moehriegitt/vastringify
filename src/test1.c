@@ -201,6 +201,9 @@ int main(void)
     va_printf("%u;;\"fo\\no\" %#x;%qs %=p\n", __LINE__, (size_t)foo, foo);
     va_printf("%u;;%#x \"fo\\no\";%p %=qs\n", __LINE__, (size_t)foo, foo);
     va_printf("%u;;1016;%x", __LINE__, 16, 16); va_printf("\n");
+    char const *abc = "abc";
+    va_printf("%u;;aaba5;%.1s%=.2s%=.1s%u\n", __LINE__, &abc, 5);
+    va_printf("%u;;bc5;%s%u\n", __LINE__, abc, 5);
 #endif
 
     return 0;
