@@ -276,15 +276,15 @@ The following function parameter types are recognised:
 
  - `char *`, `char const *`: 8-bit character strings or
    arrays.  By default, the UTF-8 decoder is used to extract
-   code pointer for printing.
+   code points for printing.
 
  - `char16_t *`, `char16_t const *`: 16-bit character strings or
    arrays.  By default, the UTF-16 decoder is used to extract
-   code pointer for printing.
+   code points for printing.
 
  - `char32_t *`, `char32_t const *`: 32-bit character strings or
    arrays.  By default, the UTF-32 decoder is used to extract
-   code pointer for printing.
+   code points for printing.
 
  - `Char **`, `Char const **`: pointers to pointers to
     characters, i.e., pointers to string, will print the print
