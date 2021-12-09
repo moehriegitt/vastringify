@@ -263,10 +263,16 @@ printed in the format string.
 
 The following function parameter types are recognised:
 
- - `int`, `unsigned`, `signed char`, `unsigned char`, `short`,
+ - `int`, `unsigned`, `char`, `signed char`, `unsigned char`, `short`,
    `unsigned short`, `long`, `unsigned long`, `long long`,
    `unsigned long long`: these are integer and are printed
    in unsigned or signed integer notation.
+   This means that `char`, `char16_t`, and `char32_t` all print
+   in numeric format by default, not in character format.  For
+   interpreting them as a 1-element Unicode codepoint string,
+   you need to use `c` format.  Also note that character
+   constants like `'a'` have type `int` in C and print
+   numerically by default.
 
  - `char *`, `char const *`: 8-bit character strings or
    arrays.  By default, the UTF-8 decoder is used to extract
