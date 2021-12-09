@@ -625,7 +625,7 @@ Into a recursive call sequence:
 
     init(STREAM(...), format);
     render(init(STREAM(...), format), arg1)
-    render(render(render(init(&STREAM(...), format), arg1), arg2);
+    render(render(init(&STREAM(...), format), arg1), arg2);
     ...
 
 The `STREAM()` is a temporary stream object, a compound literal, that
