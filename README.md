@@ -609,3 +609,48 @@ using va_lprintf():
         char n[va_lprintf("%a/%a%.a", dir, file, suffix)];
         return fopen(va_szprintf(n, "%a/%a%.a", dir, file, suffix), "rt");
     }
+
+## How Does This Work?
+
+The main idea is to use macro magic (both standard C99 and some extensions
+from gcc, like allowing `__VA_ARGS__` to be empty etc.) to convert the
+printf calls:
+
+    x_printf(format)
+    x_printf(format, arg1)
+    x_printf(format, arg1, arg2)
+    ...
+
+Into a recursive call sequence:
+
+    init(STREAM(...), format);
+    render(init(STREAM(...), format), arg1)
+    render(render(render(init(&STREAM(...), format), arg1), arg2);
+    ...
+
+The `STREAM()` is a temporary stream object, a compound literal, that
+is used for state information when parsing the format string, and for
+storing the output printer.  The pointer to this temporary object is
+returned by all of the functions to the next layer of recursion.  The
+`init()` initialises the format parser and the output stream (e.g. for
+NUL termination and initial `malloc()`), and each `render()` consumes
+one argument by printing it (once or more times) or using it as a
+width or precision.
+
+The macro magic is called `VA_REC()`.  You can try it with `gcc -E` or
+something:
+
+    VA_REC(f,a)        -> a
+    VA_REC(f,a,b)      -> f(a,b)
+    VA_REC(f,a,b,c)    -> f(f(a,b),c)
+    VA_REC(f,a,b,c,d)  -> f(f(f(a,b),c),d)
+
+The `render()` resolves to a `_Generic()` call that selects the
+appropriate printer based on the type of the argument, so that
+for each argument, a different C functions may be invoked. E.g.:
+
+    int i;
+    render(f,i)    -> print_int(f,i)
+
+    char const *s;
+    render(f,s)    -> print_string(f,s)
