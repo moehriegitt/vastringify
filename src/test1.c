@@ -200,6 +200,7 @@ int main(void)
     char const *foo = "fo\no";
     va_printf("%u;;\"fo\\no\" %#x;%qs %=p\n", __LINE__, (size_t)foo, foo);
     va_printf("%u;;%#x \"fo\\no\";%p %=qs\n", __LINE__, (size_t)foo, foo);
+    va_printf("%u;;1016;%x", __LINE__, 16, 16); va_printf("\n");
 #endif
 
     return 0;

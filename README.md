@@ -127,7 +127,7 @@ information.  The format specifier "%a" can be used as a generic
 
 ### Format Specifiers
 
-Like in C, a format specifiers begins with '%' followed by:
+Like in C, a format specifier begins with '%' followed by:
 
  - a list of flag characters
  - a width specifier
@@ -146,11 +146,13 @@ The following flags are recognised:
      - for `X` and base 16, `0X` is prefixed,
      - for `e` and base 32, `0d` is prefixed,
      - for `E` and base 32, `0E` is prefixed.
-   For quoted strings, this inhibits printing of delimiting quotes.
+
+ For quoted strings, this inhibits printing of delimiting quotes.
 
  - `0` pads numerics with zero `0` on the left rather than
    with a space character ` `.  If a precision is given, this is
    ignored.
+
    For C and JSON quotation, this selects to quote non-US-ASCII
    characters using `\u` and `\U` instead of printing them in
    output encoding.
@@ -170,8 +172,8 @@ The following flags are recognised:
 A width is either a decimal integer, or a `*`.  The `*` selects
 that the width is taken from the next function parameter.  If fewer
 code points result from the conversion, the output is padded with
-white space up the width.  A negative width is intepreted as a
-`-` flag followed by a positive width.
+white space up the width.  A negative width is intepreted as
+a `-` flag followed by a positive width.
 
 A precision is specified by a `.` (period) followed by either a
 decimal integer or a `*`.  The `*` selects that the width is taken
@@ -179,11 +181,12 @@ from the next function parameter.  If the precision is just `.`,
 it is interpreted as zero.  The precision defines the minimum number
 of digits in numeric conversions. For strings, this is the maximum
 number of raw code units read from the input string (not the number
-of converted code points, but the the low-level number of elements
+of converted code points, but the low-level number of elements
 in the string, so that non-NUL terminated arrays can be printed
-with their size passed as precision.  The input decoders will not
-read incomplete encodings at the end of limited strings, but will
-stop before.  If a pointer to a string pointer is passed, then the
+with their size passed as precision, even with multi-byte/multi-word
+encodings stored inside.  The input decoder will not read incomplete
+encodings at the end of limited strings, but will stop before.  If
+a pointer to a string pointer is passed, then the
 pointer will be updated so that it points to the next character, i.e.,
 the one after the last one that was read.
 
@@ -205,6 +208,11 @@ The following integer mask and quotation specifiers are recognised:
 
  - `k` selects Bourne or Korn shell quotation.  There is a
    separate section below to explain this.
+
+Note that most of the usual length specifiers (`l`, `ll`, etc.) known
+from C make no sense and are not recognised (nor ignored), because
+type casting control in varargs is not needed here due to the
+type-safety.
 
 The following conversion letters are recognised:
 
@@ -229,23 +237,27 @@ The following conversion letters are recognised:
     'a'..'z','2'..'7'.  `e` uses lower case digits and prefix,
     `E` uses upper case.
 
- - `p` print like a pointer.  For any pointer, including
+ - `p` prints like a pointer.  For any pointer, including
    character strings, the pointer value will be printed.  For
    integers, this is equal to `#x` format.
 
- - `P` just like `p`, but with upper case hexadecial digits.
+ - `P` is just like `p`, but with upper case hexadecial digits.
 
  - `c` prints as a character, like a one-element string.  Note
    that the NUL character is not printed, but behaves like an
    empty string.  For string quotation where hexadecimals are
    printed, use lower case characters.
 
- - `C` just like `c`, but gor string quotation where hexadecimals
-   are printed, use upper case characters.
+ - `C` is just like `c`, but in string quotation when hexadecimals
+   are printed, uses upper case characters.
 
- - any letter not mentioned above: print in default notation,
+ - any letter not mentioned above prints in default notation,
    if the letter is upper case, use upper case letters where
    appropriate.
+
+Function parameters behind the last format specifier in the format
+string are printed in default notation after everything that is
+printed in the format string.
 
 ## Function Parameters
 

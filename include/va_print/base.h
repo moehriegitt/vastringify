@@ -229,7 +229,7 @@ typedef struct va_stream va_stream_t;
 typedef struct {
     /** initialises the stream */
     void (*init)(va_stream_t *);
-    /** puts one code unit into the stream */
+    /** puts one code point into the output stream */
     void (*put)(va_stream_t *, unsigned c);
 } va_stream_vtab_t;
 

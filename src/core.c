@@ -543,6 +543,9 @@ static bool render_format(va_stream_t *s)
 
     unsigned c = iter_take(s, iter);
     if (c == 0) {
+        s->width = 0;
+        s->prec = 1;
+        s->opt &= VA_OPT_RESET;
         return 0;
     }
 
