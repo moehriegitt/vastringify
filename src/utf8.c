@@ -7,8 +7,6 @@
 #include <va_print/core.h>
 #include <va_print/impl.h>
 
-#define UTF8_NUL 0xff
-
 static int iter_nth(
     unsigned *res,
     va_read_iter_t *iter,
