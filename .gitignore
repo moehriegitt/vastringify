@@ -1,0 +1,10 @@
+.desktop.el*
+include/Makefile
+include/va_print/Makefile
+src/Makefile
+*~
+*.o
+*.su
+out
+old
+sicher
