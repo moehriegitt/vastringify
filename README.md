@@ -203,7 +203,7 @@ The following integer mask and quotation specifiers are recognised:
  - `q` selects C quotation for strings and char format.  There is a
    separate section below to explain this.
 
- - `qq` selects JSON quotation for strings and char format.  There is a
+ - `Q` selects JSON quotation for strings and char format.  There is a
    separate section below to explain this.
 
  - `k` selects Bourne or Korn shell quotation.  There is a
@@ -438,7 +438,7 @@ units read from the string can be restricted using the format precision.
   contain any "*", because then the width/precision will be
   printed, not the last value, which is probably not what you want.
 
-- The "q", "qq", and "Q" modifiers mark different kinds of quotation.
+- The "q", "Q", and "k" modifiers mark different kinds of quotation.
   "q" is for C, "Q" is for Java/JSON, and "k" for Bourne/Korn Shells.
 
 ## Differences
@@ -518,8 +518,8 @@ units read from the string can be restricted using the format precision.
   (and also clang 3.8) accumulates the temporary stack objects in each
   function without reusing the stack space, i.e., each call to some
   print function builds up more stack at the call site. The temporary
-  objects are clearly dead, but gcc keeps. It does not help to all
-  ({...}) or do{...}while(0) to formally restrict the official
+  objects are clearly dead, but gcc keeps them. It does not help to add
+  `({...})` or `do{...}while(0)` to formally restrict the official
   lifetime of the object to a block -- the compilers keep the object
   around.  This is highly undesirable here, but I have no idea how to
   prevent this.  -fconserve-stack and any other optimisations I tried
