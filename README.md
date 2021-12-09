@@ -12,85 +12,284 @@ suitable even for embedded software.
 The usual C printf formatting syntax is used, with some restrictions
 and some extensions.
 
-## Q&A
+## Synopsis
 
-- Q: Why formatted printing?  A: Because it is nicer, and also it is
-  feasible for Gnu gettext, which e.g. C++'s cout<< is not.  A:
-  Because I like the string template based approach and find it
-  more concise and can read it with less effort.
+In the following, `Char` may be `char`, `char16_t`, or `char32_t`:
 
-## TODO
+    #include <va_print/file.h>
 
-- ISO-8859-1 (because why not)
+    void
+    va_fprintf(FILE *f, Char const *format, ...);
 
-## Examples
+    void
+    va_printf(Char const *format, ...);
 
-Open a file with computed name, up to a fixed path length:
+    va_stream_file_t
+    VA_STREAM_FILE(FILE *f);
+
 
     #include <va_print/char.h>
 
-    FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
-    {
-        return fopen(va_nprintf(80, "%a/%a%.a", dir, file, suffix), "rt");
-    }
+    Char *
+    va_snprintf(Char *s, size_t n, Char const *format, ...);
 
-The same with error checking about truncated string or en- or decoding
-errors:
+    Char *
+    va_szprintf(Char s[], Char const *format, ...);
 
-    FILE *open_text_rd(
-        char const *dir, char const *file, unsigned suffix)
-    {
-        va_error_t e;
-        char *fn = va_nprintf(80, "%a/%a%.a", dir, file, suffix, &e);
-        if (e.code != VA_E_OK) {
-            return NULL;
-        }
-        return fopen(fn, "rt");
-    }
+    char *
+    va_nprintf(size_t n, Char const *format, ...);
 
-Using _Generic reduces the number of functions and macros, too, e.g.,
-you can use 8-bit, 16-bit, or 32-bit characters seamlessly.  The
-following uses UTF-16 as a parameter, but calls fopen() with an UTF-8
-string.  The only change is the parameter type.  Just for fun, let's
-use an UTF-32 format string:
+    char16_t *
+    va_unprintf(size_t n, Char const *format, ...);
 
-    FILE *open_text_rd(
-        char16_t const *dir, char16_t const *file, unsigned suffix)
-    {
-        va_error_t e;
-        char *fn = va_nprintf(80, U"%a/%a%.a", dir, file, suffix, &e);
-        if (e.code != VA_E_OK) {
-            return NULL;
-        }
-        return fopen(fn, "rt");
-    }
+    char32_t *
+    va_Unprintf(size_t n, Char const *format, ...);
 
-This can also be done by creating a dynamically allocated string with
-realloc():
+    va_stream_charp_t
+    VA_STREAM_CHARP(Char const *s, size_t n);
+
 
     #include <va_print/malloc.h>
 
-    FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
-    {
-        char *fn = va_mprintf(realloc, "%a/%a%.a", dir, file, suffix);
-        if (fn == NULL) {
-            return NULL;
-        }
-        FILE *f = fopen(fn, "rt");
-        free(fn);
-        return f;
-    }
+    char *
+    va_mprintf(void *(*realloc)(void *, size_t)), Char const *, ...)
 
-Using VLA, do the same with arbitrary length by pre-computing the length
-using va_lprintf():
+    char16_t *
+    va_umprintf(void *(*realloc)(void *, size_t)), Char const *, ...)
+
+    char32_t *
+    va_Umprintf(void *(*realloc)(void *, size_t)), Char const *, ...)
+
+    va_stream_vec_t
+    VA_STREAM_VEC(void *(*realloc)(void *, size_t));
+
+    va_stream_vec16_t
+    VA_STREAM_VEC16(void *(*realloc)(void *, size_t));
+
+    va_stream_vec32_t
+    VA_STREAM_VEC32(void *(*realloc)(void *, size_t));
+
 
     #include <va_print/len.h>
 
-    FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
-    {
-        char n[va_lprintf("%a/%a%.a", dir, file, suffix)];
-        return fopen(va_szprintf(n, "%a/%a%.a", dir, file, suffix), "rt");
-    }
+    size_t
+    va_lprintf(Char const *format, ...);
+
+    va_stream_len_t
+    VA_STREAM_LEN();
+
+
+    #include <va_print/core.h>
+
+    va_stream_...t *
+    va_xprintf(va_stream_...t *s, Char const *format, ...)
+
+    void
+    va_iprintf(va_stream_...t *s, Char const *format, ...);
+
+    void
+    va_pprintf(va_stream_vtab_t *v, Char const *format, ...);
+
+    #include <va_print/base.h>
+
+    typedef struct { ... } va_stream_t;
+
+    typedef struct { ... } va_stream_vtab_t;
+
+    typedef struct { unsigned code; } va_error_t
+    #define VA_E_OK
+    #define VA_E_NULL
+    #define VA_E_DECODE
+    #define VA_E_ENCODE
+    #define VA_E_TRUNC
+
+    va_stream_t
+    VA_STREAM(va_stream_vtab_t const *vtab)
+
+## Description
+
+This library provides a type-safe printing mechanism to print
+and kind of string of base type `char`, `char16_t`, or `char32_t`,
+or any integer or pointer into a new string, an array, or a file.
+
+The library also provides functions for user-defined output streams
+that can print into any other kind of stream.
+
+The arguments to the formatted print are passed into a `_Generic()`
+macro instead of '...' and the resulting function call is thus
+type-safe based on the actual argument type, and cannot crash due to a
+wrong format specifier.
+
+The format specifiers in this printing mechanism serve to define which
+output format should be used, as they are not needed for type
+information.  The format specifier "%a" can be used as a generic
+'default' output format.
+
+### Format Specifiers
+
+Like in C, a format specifiers begins with '%' followed by:
+
+ - a list of flag characters
+ - a width specifier
+ - a precision specifier
+ - a list of integer mask and quotation specifiers
+ - a conversion letter
+
+The following flags are recognised:
+
+ - `#` print in alternative form.  For numeric format, a prefix to
+   designate the base is prefixed to the value except to 0:
+     - for `o` and base 8, `0` is prefixed
+     - for `b` and base 2, `0b` is prefixed,
+     - for `B` and base 2, `0B` is prefixed,
+     - for `x` and base 16, `0x` is prefixed,
+     - for `X` and base 16, `0X` is prefixed,
+     - for `e` and base 32, `0d` is prefixed,
+     - for `E` and base 32, `0E` is prefixed.
+   For quoted strings, this inhibits printing of delimiting quotes.
+
+ - `0` pads numerics with zero `0` on the left rather than
+   with a space character ` `.  If a precision is given, this is
+   ignored.
+   For C and JSON quotation, this selects to quote non-US-ASCII
+   characters using `\u` and `\U` instead of printing them in
+   output encoding.
+
+ - `-` selects to left flush instead of the default right flush.
+
+ - ` ` (a space character U+0020) selects that a space is printed
+   in front of positive signed integers.
+
+ - `+` selects that a `+` is printed in front of positive signed
+   integers.
+
+ - `=` specifies that the last value is printed again using this
+   new format specifier.  This is meager replacement for the `$`
+   position specifiers that are not implemented in this library.
+
+A width is either a decimal integer, or a `*`.  The `*` selects
+that the width is taken from the next function parameter.  If fewer
+code points result from the conversion, the output is padded with
+white space up the width.  A negative width is intepreted as a
+`-` flag followed by a positive width.
+
+A precision is specified by a `.` (period) followed by either a
+decimal integer or a `*`.  The `*` selects that the width is taken
+from the next function parameter.  If the precision is just `.`,
+it is interpreted as zero.  The precision defines the minimum number
+of digits in numeric conversions. For strings, this is the maximum
+number of raw code units read from the input string (not the number
+of converted code points, but the the low-level number of elements
+in the string, so that non-NUL terminated arrays can be printed
+with their size passed as precision.  The input decoders will not
+read incomplete encodings at the end of limited strings, but will
+stop before.  If a pointer to a string pointer is passed, then the
+pointer will be updated so that it points to the next character, i.e.,
+the one after the last one that was read.
+
+The following integer mask and quotation specifiers are recognised:
+
+ - `h` apply the mask `0xffff` to the signed or unsigned integer, then
+   apply zero extension to unsigned values or for `c` conversion,
+   and apply sign extensino for signed values.
+
+ - `hh` apply the mask `0xff` to the signed or unsigned integer, then
+   apply zero extension to unsigned values or for `c` conversion,
+   and apply sign extensino for signed values.
+
+ - `q` selects C quotation for strings and char format.  There is a
+   separate section below to explain this.
+
+ - `qq` selects JSON quotation for strings and char format.  There is a
+   separate section below to explain this.
+
+ - `k` selects Bourne or Korn shell quotation.  There is a
+   separate section below to explain this.
+
+The following conversion letters are recognised:
+
+ - `a` prints anything in default notation.
+
+ - `o` selects octal integer notation for numeric printing (including
+   pointers).
+
+ - `d`, `i`, or `u` selects decimal integer notation for numeric
+   printing (including pointers).
+
+ - `x` or `X` selects hexadecimal integer notation for numeric
+   printing (including pointers).  `x` uses lower case digits,
+   `X` upper case.
+
+ - `b` or `B` selects binary integer notation for numeric
+   printing (including pointers).  `b` uses lower case prefix,
+   `B` uses upper case.  The difference is only visible
+   with the `#` flag.
+
+  - `e` or `E` selects Base32 notation using the digits
+    'a'..'z','2'..'7'.  `e` uses lower case digits and prefix,
+    `E` uses upper case.
+
+ - `p` print like a pointer.  For any pointer, including
+   character strings, the pointer value will be printed.  For
+   integers, this is equal to `#x` format.
+
+ - `P` just like `p`, but with upper case hexadecial digits.
+
+ - `c` prints as a character, like a one-element string.  Note
+   that the NUL character is not printed, but behaves like an
+   empty string.  For string quotation where hexadecimals are
+   printed, use lower case characters.
+
+ - `C` just like `c`, but gor string quotation where hexadecimals
+   are printed, use upper case characters.
+
+ - any letter not mentioned above: print in default notation,
+   if the letter is upper case, use upper case letters where
+   appropriate.
+
+## Function Parameters
+
+The following function parameter types are recognised:
+
+ - `int`, `unsigned`, `signed char`, `unsigned char`, `short`,
+   `unsigned short`, `long`, `unsigned long`, `long long`,
+   `unsigned long long`: these are integer and are printed
+   in unsigned or signed integer notation.
+
+ - `char *`, `char const *`: 8-bit character strings or
+   arrays.  By default, the UTF-8 decoder is used to extract
+   code pointer for printing.
+
+ - `char16_t *`, `char16_t const *`: 16-bit character strings or
+   arrays.  By default, the UTF-16 decoder is used to extract
+   code pointer for printing.
+
+ - `char32_t *`, `char32_t const *`: 32-bit character strings or
+   arrays.  By default, the UTF-32 decoder is used to extract
+   code pointer for printing.
+
+ - `Char **`, `Char const **`: pointers to pointers to
+    characters, i.e., pointers to string, will print the print
+   value and then update the pointer to point to the code
+   unit just behind the last one that was read from the
+   string.  With no precision given in the format, they will
+   point to the terminating NUL character.  When these
+   parameters are printed multiple times using the `=` flag,
+   then the updated value will be used in the next print.
+
+ - `va_error_t*`: this retrieves the error code from the
+   stream and writes it into the passed struct.  This can
+   be used to check for encoding or decoding errors, out
+   of memory conditions, or hitting the end of the output
+   array.
+
+ - `va_read_iter_t*`: this is an internal type to read from
+   strings.  There are quite a few constraints on how to
+   define a proper `va_read_iter_t`, which are not all
+   documented here.
+
+ - anything else: is tried to be converted to a pointer and
+   printed like a pointer, i.e., in `%#x` format.
 
 ## Unicode
 
@@ -318,3 +517,83 @@ units read from the string can be restricted using the format precision.
   block to limit the lifetime, even if the object is clearly dead.  I
   added ({...}) to the macros so that newer compilers produce much less
   stack usage at call sites.
+
+## Q&A
+
+- Q: Why formatted printing?  A: Because it is nicer, and also it is
+  feasible for Gnu gettext, which e.g. C++'s cout<< is not.  A:
+  Because I like the string template based approach and find it
+  more concise and can read it with less effort.
+
+## TODO
+
+- ISO-8859-1 (because why not)
+
+## Examples
+
+Open a file with computed name, up to a fixed path length:
+
+    #include <va_print/char.h>
+
+    FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
+    {
+        return fopen(va_nprintf(80, "%a/%a%.a", dir, file, suffix), "rt");
+    }
+
+The same with error checking about truncated string or en- or decoding
+errors:
+
+    FILE *open_text_rd(
+        char const *dir, char const *file, unsigned suffix)
+    {
+        va_error_t e;
+        char *fn = va_nprintf(80, "%a/%a%.a", dir, file, suffix, &e);
+        if (e.code != VA_E_OK) {
+            return NULL;
+        }
+        return fopen(fn, "rt");
+    }
+
+Using _Generic reduces the number of functions and macros, too, e.g.,
+you can use 8-bit, 16-bit, or 32-bit characters seamlessly.  The
+following uses UTF-16 as a parameter, but calls fopen() with an UTF-8
+string.  The only change is the parameter type.  Just for fun, let's
+use an UTF-32 format string:
+
+    FILE *open_text_rd(
+        char16_t const *dir, char16_t const *file, unsigned suffix)
+    {
+        va_error_t e;
+        char *fn = va_nprintf(80, U"%a/%a%.a", dir, file, suffix, &e);
+        if (e.code != VA_E_OK) {
+            return NULL;
+        }
+        return fopen(fn, "rt");
+    }
+
+This can also be done by creating a dynamically allocated string with
+realloc():
+
+    #include <va_print/malloc.h>
+
+    FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
+    {
+        char *fn = va_mprintf(realloc, "%a/%a%.a", dir, file, suffix);
+        if (fn == NULL) {
+            return NULL;
+        }
+        FILE *f = fopen(fn, "rt");
+        free(fn);
+        return f;
+    }
+
+Using VLA, do the same with arbitrary length by pre-computing the length
+using va_lprintf():
+
+    #include <va_print/len.h>
+
+    FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
+    {
+        char n[va_lprintf("%a/%a%.a", dir, file, suffix)];
+        return fopen(va_szprintf(n, "%a/%a%.a", dir, file, suffix), "rt");
+    }
