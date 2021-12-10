@@ -1,4 +1,4 @@
-# Type-Safe Printf For C11
+# Type-Safe Printf For C
 
 This uses macro magic, compound literals, and _Generic to take
 printf() to the next level: type-safe printing, printing into compound
@@ -11,6 +11,13 @@ suitable even for embedded software.
 
 The usual C printf formatting syntax is used, with some restrictions
 and some extensions.
+
+## Compatibility
+
+This library requires at least a C11 compiler (for `_Generic`,
+`char16_t`, `char32_t`), and it uses a few gcc extensions that are
+also understood by Clang (`({...})`, `,##__VA_ARGS__`, `__typeof__`,
+`__attribute__`).
 
 ## Synopsis
 
@@ -227,20 +234,21 @@ The following conversion letters are recognised:
 
  - `x` or `X` selects hexadecimal integer notation for numeric
    printing (including pointers).  `x` uses lower case digits,
-   `X` upper case.
+   `X` upper case.  Note that this also prints signed numbers with
+   a `-` if appropriate: `va_printf("%#x", -5)` prints `-0x5`.
 
  - `b` or `B` selects binary integer notation for numeric
    printing (including pointers).  `b` uses lower case prefix,
    `B` uses upper case.  The difference is only visible
    with the `#` flag.
 
-  - `e` or `E` selects Base32 notation using the digits
+ - `e` or `E` selects Base32 notation using the digits
     'a'..'z','2'..'7'.  `e` uses lower case digits and prefix,
     `E` uses upper case.
 
- - `p` prints like a pointer.  For any pointer, including
-   character strings, the pointer value will be printed.  For
-   integers, this is equal to `#x` format.
+ - `p` prints like `#x`, and for any pointer, including strings,
+   prints the pointer value instead of the contents.  Note that
+   it also prints signed numbers: `va_print("%p",-5)` prints `-0x5`.
 
  - `P` is just like `p`, but with upper case hexadecial digits.
 
@@ -322,7 +330,7 @@ principle be used and passed through the library.
 
 The only place the core library uses Unicode interpretation is when
 quoting C or JSON strings for codepoints >0x80 (e.g., when formatting
-with "%0qs"), and if a decoding error is encountered or if the value
+with `%0qs`), and if a decoding error is encountered or if the value
 is not valid Unicode, then it uses \ufffd to show this, because the
 quotation using \u or \U would otherwise be a lie.
 
@@ -335,15 +343,15 @@ constraints are met, like excluding anything above 0x10FFFF and high
 and low UTF-16 surrogates, and detecting decoding errors according to
 the Unicode recommendations and best practices.  The encoder/decoder
 pairs usually try to pass through faulty sequences as is, if possible,
-e.g., reading ISO-8859-1 data from an UTF-8 "%s" and printing it into
+e.g., reading ISO-8859-1 data from an UTF-8 `%s` and printing it into
 an UTF-8 output stream preserves the original ISO-8859-1 byte
 sequence, although the intermediate steps do raise 'illegal sequence'
 errors.
 
 Integers print without Unicode checks, i.e., if an integer is printed
-as a character using "%c", then the lower 24 bits is passed down to
+as a character using `%c`, then the lower 24 bits is passed down to
 the output stream encoder as is.  If integers larger than 0xffffff are
-tried to be printed with "%c", this results in a decoding error, and
+tried to be printed with `%c`, this results in a decoding error, and
 only the lower 24 bits are used.
 
 ## Encodings
@@ -393,82 +401,107 @@ units read from the string can be restricted using the format precision.
 
 ### C/C++ quotation
 
-- "q" modifier
-- others print no quotation marks for in-string printing
-- upper case formats use upper case letters in hexadecimals
+- `q` quotation option in format specifier
+- without `#`, prints quotation marks, single for `c` and `C`,
+  conversion, otherwise double.
 - quotation of unprintable characters <U+0080 is done using
   octal quotation.
-- without "#", prints quotation marks, single for "c" and "C",
-  otherwise double.
-- "0" quotes all non-ASCII using "\u" or "\U".  Note
-  that "\x" is not used, because it may not terminate, so
-  quoting "\x1" plus "1" is difficult.
+- quotation of some characters in special notation:
+  `\t`, `\r`, `\n`, `\b`, `\f`, `\'`, `\"`, `\\`.
+- `0` flag quotes all non-ASCII using `\u` or `\U`.  Note
+  that `\x` is not used, because it may not terminate, so
+  quoting `\x1` plus `1` is more complicated.
 - chars that are marked as decoding errors are quoted as
-  "\ufffd", the replacement character, to avoid mixing encoding
-  errors with "\u..." quotation, which would make the resulting
+  `\ufffd`, the replacement character, to avoid mixing encoding
+  errors with `\u` quotation, which would make the resulting
   string more wrong than with only the encoding errors.
-- any kind of integer can be printed in char notation using
-  "c" or "C".
+- upper case formats use upper case letters in hexadecimals
+
+Examples:
+
+- `va_printf("%qs", "foo'bar")` prints `"foo\'bar"`.
+- `va_printf("%qc", 10)` prints `'\n'`.
+- `va_printf("%#qc", 16)` prints `\020`.
+- `va_printf("%#0qc", 0x201c)` prints `\u201c`.
+- `va_printf("%#0qC", 0x201c)` prints `\u201C`.
 
 ### Java/JSON quotation
 
-- "Q" modifier
-- Like C, but always uses "\u" or "\U", but never octal
+- `Q` quotation option in format specifier
+- Like C, but always uses `\u` or `\U` and never octal
+
+Examples:
+
+- `va_printf("%Qs", "foo'bar")` prints `"foo\'bar"`.
+- `va_printf("%Qc", 10)` prints `'\n'`.
+- `va_printf("%#Qc", 16)` prints `\u0010`.
+- `va_printf("%#0Qc", 0x201c)` prints `\u201c`.
+- `va_printf("%#0QC", 0x201c)` prints `\u201C`.
 
 ### Bourne Shell quotation
 
-- "k" modifier
-- uses single quote style
-- without "#", prints quotation marks if necessary
+- `k` quotation option in format specifier (mnemonic: Korn
+  Shell quotation)
+- uses single quotes if necessary
+- without `#`, prints quotation marks if necessary
 - others print no quotation marks for in-string printing
 - this actually quotes nothing except the single quotation
   mark.
 - chars marked as decoding errors are not quoted, but passed
   through.
 
+Examples:
+
+- `va_printf("%ks", "ab")` prints `ab`.
+- `va_printf("%ks", "a b")` prints `'a b'`.
+- `va_printf("%ks", "a'b")` returns `'a'\''b'`.
+- `va_printf("%#ks", "a'b")` returns `a'\''b`.
+
 ## Extensions
 
 - This is type-safe, i.e., printing an int using "%s" will not
   crash, but just print the integer.
 
-- "%b" and "%B" print binary, with optional "0b" or "0B" prefix.
+- `%b` and `%B` print binary, with optional `0b` or `0B` prefix.
 
-- "%O" also prints octal, with "0" prefix
-
-- "%e" and "%E" print integers in Base32, with optional "0e" or "0E" prefix.
-  This could be handy for writing error codes: 0eINVAL, 0eAGAIN, 0eIO, ...
+- `%e` and `%E` print integers in Base32, with optional `0e` or `0E`
+  prefix.  This could be handy for writing error codes: 0eINVAL,
+  0eAGAIN, 0eIO, ...
 
 - any meaningless format specifier (=letter) defaults to 'print in
-  natural default form'.  It is recommended to use "%a" for default
+  natural default form'.  It is recommended to use `%a` for default
   format printing of anything.
 
-- The "=" modifier prints the last value again, possibly with a
-  different format.  Note that the format containing "=" should not
-  contain any "*", because then the width/precision will be
+- The `=` modifier prints the last value again, possibly with a
+  different format.  Note that the format containing `=` should not
+  contain any `*`, because then the width/precision will be
   printed, not the last value, which is probably not what you want.
 
-- The "q", "Q", and "k" modifiers mark different kinds of quotation.
-  "q" is for C, "Q" is for Java/JSON, and "k" for Bourne/Korn Shells.
+- The `q`, `Q`, and `k` modifiers mark different kinds of quotation.
+  `q` is for C, `Q` is for Java/JSON, and `k` for Bourne/Korn Shells.
 
 ## Differences
 
 - This library assumes that text is printed, not binary, so it will never
   print '\0'.
 
-- "%u" and "%i"/"%d" never reinterpret a sign bit: the mechanism is type-safe,
-  so the actual value is printed.  "%u", "%d", and "%i" all just mean
-  'print in decimal'.
+- `%u` and `%i`/`%d` never force an interpretation of sign vs. unsigned:
+  this is done by type information, because the mechanism is type-safe.
+  Instead, `%u`, `%d`, and `%i` all just mean 'print in decimal'.
 
-- In general, the format specifiers carries much less importance,
-  because the information about the type that is passed is not needed.
-  The format really only specifies 'print like ...', so by default
-  it is recommended to just print with "%a".
+- The `%x` specifier also prints negative signed numbers, again, due
+  to type-safety.
+
+- The format specifiers are not needed to prevent the program from
+  crashing, because the information about the type that is passed is
+  not needed.  The format really only specifies 'print like ...', so
+  by default it is recommended to just print with `%a`.
 
 - Due to the type-safety, the size length modifiers (h, hh, the others
   are not needed) do not need to match the value that is passed, but
   the lengths 'h' and 'hh' are interpreted as masks 0xff and 0xffff,
   resp., i.e., you can print an unsigned long long's lowest bytes with
-  "%hhd".
+  `%hhd`.
 
 - for strings, the precision counts the number of output bytes in the
   standard, but in this library, it is the number of input elements in
@@ -482,34 +515,35 @@ units read from the string can be restricted using the format precision.
 - If no format specifier is found, values are printed at the end of
   the format string in default notation (as if printed with %a).
 
-- Note that '_' literals have type 'int' in C, so values >0x7f, with
+- Note that `'...'` literals have type `int` in C, so values >0x7f, with
   its highest bit set, will be misinterpreted as illegal Unicode on
   compilers that have signed chars.  On my compiler, printing
-  "%c",'\xfe' prints a replacement characters, because 0xfffffe is not
-  valid Unicode, and this libraries implementation has no chance to
+  `"%c",'\xfe'` prints a replacement characters, because 0xfffffffe is
+  not valid Unicode, and this libraries implementation has no chance to
   find out that this is in fact 0xfe (and not 0xfffe from a signed
-  short promotion).  So printing '_' literals is unfortunately broken,
-  without a fix.  Printing with "%hhc" works.  Printing (char)'\xfe'
-  also works.
+  short promotion).  So printing `'...'` literals is unfortunately broken,
+  without a fix.  Printing with `%hhc` works as expected.  Printing
+  `(char)'\xfe'` also works, but is more ugly in my opinion (I do not
+  like casts much).
 
 ## Restrictions
 
-- "%n" is not implemented, because pointers to integers are already
+- `%n` is not implemented, because pointers to integers are already
   used for strings, and the ambiguity between 'size_t*' and
-  'char32_t*' is common on many 32-bit systems, where both are
-  'unsigned*' in C.  Distinguishing whether to read or to write based
+  `char32_t*` is common on many 32-bit systems, where both are
+  `unsigned*` in C.  Distinguishing whether to read or to write based
   on the format string alone is also the opposite of what this library
   tries to do, and accidentally writing the print size into an
-  'char32_t*' string is a weird bug I'd rather not make possible.
+  `char32_t*` string is a weird bug I'd rather not make possible.
 
-- "m$" syntax for reordering format strings is not supported, because
+- `m$` syntax for reordering format strings is not supported, because
   it would require storing the parameters in an array and would
   counteract all the magic of the recursive expressions.  This would
   make the code much more complex and stack usage infeasible.  In
   fact, it would probably make the whole point of this library
-  infeasible.  There is the extended "=" option for at least printing
-  the same value multiple times, so "%d %=#x" prints the same value
-  decimal and hexadecimal, and "%qs %=p" prints a string in C quotation
+  infeasible.  There is the extended `=` option for at least printing
+  the same value multiple times, so `%d %=#x` prints the same value
+  decimal and hexadecimal, and `%qs %=p` prints a string in C quotation
   and its pointer value.
 
 - no floats, because support would be too large for a small library.
@@ -517,11 +551,11 @@ units read from the string can be restricted using the format precision.
   is only used if float arguments are actually used (the magic of
   _Generic: you would not pay for floats unless you use them).
 
-- Of the size flags, hh, h, l, ll, L, q, j, z, Z, t, only h and hh
-  are implemented as masks 0xff and 0xffff, resp., because it was
-  felt that the others do not make much sense in a type-safe setting
-  as they exist mainly to ensure correct pointer arithmetics with
-  stdargs.h based printf.
+- Of the size flags, `hh`, `h`, `l`, `ll`, `L`, `q`, `j`, `z`, `Z`,
+  `t`, only h and hh are implemented as masks `0xff` and `0xffff`,
+  resp., because it was felt that the others do not make much sense in
+  a type-safe setting as they exist mainly to ensure correct pointer
+  arithmetics with stdargs.h based printf.
 
 - gcc 6: The library itself uses relatively little stack.  But gcc
   (and also clang 3.8) accumulates the temporary stack objects in each
@@ -536,15 +570,15 @@ units read from the string can be restricted using the format precision.
 
   gcc 11 fixes this (or maybe some earlier version), but it requires a
   block to limit the lifetime, even if the object is clearly dead.  I
-  added ({...}) to the macros so that newer compilers produce much less
-  stack usage at call sites.
+  added `({...})` to the macros so that newer compilers produce much
+  less stack usage at call sites.
 
 ## Q&A
 
 - Q: Why formatted printing?  A: Because it is nicer, and also it is
-  feasible for Gnu gettext, which e.g. C++'s cout<< is not.  A:
-  Because I like the string template based approach and find it
-  more concise and can read it with less effort.
+  feasible for Gnu gettext, which e.g. C++'s `cout<<` is not.  A:
+  Because I like the string template based approach and find it more
+  concise and can read it with less effort.
 
 ## TODO
 

@@ -204,6 +204,26 @@ int main(void)
     char const *abc = "abc";
     va_printf("%u;;aaba5;%.1s%=.2s%=.1s%u\n", __LINE__, &abc, 5);
     va_printf("%u;;bc5;%s%u\n", __LINE__, abc, 5);
+
+    va_printf("%u;;\"foo\\'bar\";%qs\n", __LINE__, "foo'bar");
+    va_printf("%u;;'\\n';%qc\n", __LINE__, 10);
+    va_printf("%u;;\\020;%#qc\n", __LINE__, 16);
+    va_printf("%u;;\\u201c;%#0qc\n", __LINE__, 0x201c);
+    va_printf("%u;;\\u201C;%#0qC\n", __LINE__, 0x201c);
+
+    va_printf("%u;;\"foo\\'bar\";%Qs\n", __LINE__, "foo'bar");
+    va_printf("%u;;'\\n';%Qc\n", __LINE__, 10);
+    va_printf("%u;;\\u0010;%#Qc\n", __LINE__, 16);
+    va_printf("%u;;\\u201c;%#0Qc\n", __LINE__, 0x201c);
+    va_printf("%u;;\\u201C;%#0QC\n", __LINE__, 0x201c);
+
+    va_printf("%u;;ab;%ks\n", __LINE__, "ab");
+    va_printf("%u;;'a b';%ks\n", __LINE__, "a b");
+    va_printf("%u;;'a'\\''b';%ks\n", __LINE__, "a'b");
+    va_printf("%u;;a'\\''b;%#ks\n", __LINE__, "a'b");
+
+    va_printf("%x;;-0x5;%#x\n", __LINE__, -5);
+    va_printf("%x;;-0x5;%p\n", __LINE__, -5);
 #endif
 
     return 0;
