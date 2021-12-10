@@ -154,10 +154,17 @@ install: all
 	test -n "$(prefix)"
 	test -n "$(libdir)"
 	test -n "$(includedir)"
-	mkdir -p $(DESTDIR)$(includedir)
-	install -m 644 include/va_stringify.h $(DESTDIR)$(includedir)/va_stringify.h
+	mkdir -p $(DESTDIR)$(includedir)/va_print
+	cd include/va_print && for i in *.h; do \
+	    install -m 644 $$i $(DESTDIR)$(includedir)/va_print/$$i; \
+	done
 	mkdir -p $(DESTDIR)$(libdir)
 	install -m 644 out/libvastringify.a $(DESTDIR)$(libdir)/libvastringify.a
+
+.PHONY: uninstall
+uninstall:
+	rm -rf $(DESTDIR)$(includedir)/va_print
+	rm -f $(DESTDIR)$(libdir)/libvastringify.a
 
 .PHONY: clean
 clean:

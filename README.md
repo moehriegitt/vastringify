@@ -52,13 +52,13 @@ In the following, `Char` may be `char`, `char16_t`, or `char32_t`:
     #include <va_print/malloc.h>
 
     char *
-    va_mprintf(void *(*realloc)(void *, size_t)), Char const *, ...)
+    va_mprintf(void *(*realloc)(void *, size_t), Char const *, ...)
 
     char16_t *
-    va_umprintf(void *(*realloc)(void *, size_t)), Char const *, ...)
+    va_umprintf(void *(*realloc)(void *, size_t), Char const *, ...)
 
     char32_t *
-    va_Umprintf(void *(*realloc)(void *, size_t)), Char const *, ...)
+    va_Umprintf(void *(*realloc)(void *, size_t), Char const *, ...)
 
     va_stream_vec_t
     VA_STREAM_VEC(void *(*realloc)(void *, size_t));
@@ -89,6 +89,7 @@ In the following, `Char` may be `char`, `char16_t`, or `char32_t`:
 
     void
     va_pprintf(va_stream_vtab_t *v, Char const *format, ...);
+
 
     #include <va_print/base.h>
 
