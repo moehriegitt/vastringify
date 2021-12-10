@@ -6,18 +6,22 @@ literal char arrays, full support for UTF-8, 16, and 32, with good
 error and pass-through handling.
 
 The goal is to be safe and remove the need for varargs, and also to
-concerve stack usage with the printfs that are provided, to make this
-suitable even for embedded software.
+have little stack usage with the printfs that are provided, to make
+this suitable even for embedded software.
 
 The usual C printf formatting syntax is used, with some restrictions
 and some extensions.
+
+'Type-safe' in this context does not mean that you get more compile
+errors, but that the format specifier does not specify the argument
+type, but just defines the print format.
 
 ## Compatibility
 
 This library requires at least a C11 compiler (for `_Generic`,
 `char16_t`, `char32_t`), and it uses a few gcc extensions that are
-also understood by Clang (`({...})`, `,##__VA_ARGS__`, `__typeof__`,
-`__attribute__`).
+also understood by Clang and a few other compilers (`({...})`,
+`,##__VA_ARGS__`, `__typeof__`, `__attribute__`).
 
 ## Synopsis
 
