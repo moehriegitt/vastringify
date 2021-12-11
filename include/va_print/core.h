@@ -75,18 +75,18 @@ extern "C" {
     char32_t *:VA_CONCAT(va_xprintf_char32_p_,va_char32_p_decode), \
     char32_t const **:VA_CONCAT(va_xprintf_char32_const_pp_,va_char32_p_decode), \
     char32_t **:VA_CONCAT(va_xprintf_char32_pp_,va_char32_p_decode), \
-    va_read_iter_t*:va_xprintf_iter, \
-    unsigned char:va_xprintf_ull, \
-    unsigned short:va_xprintf_ull, \
-    unsigned int:va_xprintf_ull, \
-    unsigned long:va_xprintf_ull, \
+    unsigned char:va_xprintf_uchar, \
+    unsigned short:va_xprintf_ushort, \
+    unsigned int:va_xprintf_uint, \
+    unsigned long:va_xprintf_ulong, \
     unsigned long long:va_xprintf_ull, \
     char:va_xprintf_char, \
     signed char:va_xprintf_schar, \
     short:va_xprintf_short, \
-    int:va_xprintf_sll, \
-    long:va_xprintf_sll, \
+    int:va_xprintf_sint, \
+    long:va_xprintf_slong, \
     long long:va_xprintf_sll, \
+    va_read_iter_t *:va_xprintf_iter, \
     va_error_t *:va_xprintf_error_t_p, \
     default:va_xprintf_ptr)(s,x)
 
@@ -94,12 +94,12 @@ extern "C" {
  * The generic 'take' function for a given type format string
  */
 #define va_format_gen(x) _Generic(x, \
-    char const *:VA_CONCAT(va_char_p_take_,va_char_p_format), \
-    char *:VA_CONCAT(va_char_p_take_,va_char_p_format), \
-    char16_t const *:VA_CONCAT(va_char16_p_take_,va_char16_p_format), \
-    char16_t *:VA_CONCAT(va_char16_p_take_,va_char16_p_format), \
-    char32_t const *:VA_CONCAT(va_char32_p_take_,va_char32_p_format), \
-    char32_t *:VA_CONCAT(va_char32_p_take_,va_char32_p_format))
+    char const *:&VA_CONCAT(va_char_p_read_vtab_,va_char_p_format), \
+    char *:&VA_CONCAT(va_char_p_read_vtab_,va_char_p_format), \
+    char16_t const *:&VA_CONCAT(va_char16_p_read_vtab_,va_char16_p_format), \
+    char16_t *:&VA_CONCAT(va_char16_p_read_vtab_,va_char16_p_format), \
+    char32_t const *:&VA_CONCAT(va_char32_p_read_vtab_,va_char32_p_format), \
+    char32_t *:&VA_CONCAT(va_char32_p_read_vtab_,va_char32_p_format))
 
 /**
  * Default initialiser function for a stream that assumes
@@ -175,6 +175,11 @@ extern "C" {
         VA_INIT((Zero),X,va_format_gen(X)), __VA_ARGS__)))
 
 /* ********************************************************************** */
+/* extern objects */
+
+extern va_read_iter_vtab_t const va_char_p_read_vtab_iso8859_1;
+
+/* ********************************************************************** */
 /* extern functions */
 
 /**
@@ -189,17 +194,29 @@ extern "C" {
 extern va_stream_t *va_xprintf_init(
     va_stream_t *,
     void const *x,
-    unsigned (*get)(va_read_iter_t *));
+    va_read_iter_vtab_t const *get_vtab);
 
 extern va_stream_t *va_xprintf_schar(va_stream_t *, signed char x);
 extern va_stream_t *va_xprintf_short(va_stream_t *, short x);
+extern va_stream_t *va_xprintf_sint(va_stream_t *, int x);
+extern va_stream_t *va_xprintf_slong(va_stream_t *, long x);
 extern va_stream_t *va_xprintf_sll(va_stream_t *, long long x);
+
+extern va_stream_t *va_xprintf_uchar(va_stream_t *, unsigned char x);
+extern va_stream_t *va_xprintf_ushort(va_stream_t *, unsigned short x);
+extern va_stream_t *va_xprintf_uint(va_stream_t *, unsigned int x);
+extern va_stream_t *va_xprintf_ulong(va_stream_t *, unsigned long x);
 extern va_stream_t *va_xprintf_ull(va_stream_t *, unsigned long long x);
+
 extern va_stream_t *va_xprintf_ptr(va_stream_t *, void const *);
-extern va_stream_t *va_xprintf_iter(va_stream_t *, va_read_iter_t *);
+
 extern va_stream_t *va_xprintf_char(va_stream_t *, char x);
 
 extern va_stream_t *va_xprintf_error_t_p(va_stream_t *, va_error_t *x);
+
+extern va_stream_t *va_xprintf_iter(
+    va_stream_t *,
+    va_read_iter_t *);
 
 /* ********************************************************************** */
 /* epilogue */

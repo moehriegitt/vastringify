@@ -70,32 +70,36 @@ extern "C" {
 #define VA_OPT_ZERO   0x0004
 /** '-' modifier */
 #define VA_OPT_MINUS  0x0008
-/** '+' modifier */
-#define VA_OPT_PLUS   0x0010
-/** ' ' modifier */
-#define VA_OPT_SPACE  0x0020
 /** precision was given ('.' modifier) */
-#define VA_OPT_PREC   0x0040
+#define VA_OPT_PREC   0x0010
 /** '=' modifier */
-#define VA_OPT_EQUAL  0x0080
+#define VA_OPT_EQUAL  0x0020
+/** reserved */
+#define VA_OPT_X6     0x0040
+/** reserved */
+#define VA_OPT_X7     0x0080
 
-/** mode */
-#define VA_OPT_MODE   (9, 3U)
+/** sign options */
+#define VA_OPT_SIGN   (8, 3U)
+/** no sign modifier */
+#define VA_SIGN_NORM  0
+/** ' ' modifier */
+#define VA_SIGN_SPACE 1
+/** '+' modifier */
+#define VA_SIGN_PLUS  2
+/** 'z' modifier */
+#define VA_SIGN_ZEXT  3
+
+/** format mode */
+#define VA_OPT_MODE   (10, 7U)
 #define VA_MODE_NORM  0
 #define VA_MODE_B32   1
 #define VA_MODE_CHAR  2
 #define VA_MODE_PTR   3
-
-/** quotation */
-#define VA_OPT_QUOTE    0x1800
-/** 'Q' modifier */
-#define VA_OPT_QUOTE_SH 0x0800
-/** 'q' modifier */
-#define VA_OPT_QUOTE_C  0x1000
-/** 'qq' modifier */
-#define VA_OPT_QUOTE_J  0x1800
-/** bit for C or J quotation */
-#define VA_OPT_QUOTE_CJ 0x1000
+#define VA_MODE_TYPE  4
+#define VA_MODE_X5    5
+#define VA_MODE_X6    6
+#define VA_MODE_X7    7
 
 /* internal states for parsing format specifiers */
 #define VA_OPT_STATE   0xe000
@@ -108,24 +112,31 @@ extern "C" {
 #define VA_OPT_STATE6  0xc000
 #define VA_OPT_STATE7  0xe000 /* '*' for prec was parsed */
 
-/** size specifier mask */
-#define VA_OPT_SIZE   0x30000
-/** 'h' size specifier */
-#define VA_OPT_SIZE1  0x10000
-/** 'hh' size specifier */
-#define VA_OPT_SIZE2  0x20000
+/** quotation */
+#define VA_OPT_QUOTE   (16, 3U)
+/** no quotation */
+#define VA_QUOTE_NONE  0
+/** 'Q' modifier */
+#define VA_QUOTE_SH    1
+/** 'q' modifier */
+#define VA_QUOTE_C     2
+/** 'qq' modifier */
+#define VA_QUOTE_J     3
+
+/** size specifier mask: 'h', 'hh', or 'hhh' */
+#define VA_OPT_SIZE   (18, 3U)
 
 /** form (2..36) */
-#define VA_OPT_BASE   (18, 0x3fU)
+#define VA_OPT_BASE   (20, 0x3fU)
 
 /** error (0..7) */
-#define VA_OPT_ERR    (24, 7U)
+#define VA_OPT_ERR    (26, 7U)
 
-/** mask of resetting print options, without resetting an error */
+/** number of following error code units from the decoder: 0..3 */
+#define VA_OPT_EMORE  (29, 3U)
+
+/** mask of resetting print options, without resetting the error */
 #define VA_OPT_RESET  VA_EXP1(VA_MASH(VA_OPT_ERR))
-
-/** number of following error code units from the decoder */
-#define VA_OPT_EMORE  (27, 7U)
 
 /* ********************************************************************** */
 /* static inline functions */
@@ -133,16 +144,6 @@ extern "C" {
 static inline bool va_u_valid(unsigned c)
 {
     return ((c < VA_U_SURR_MIN) || (c > VA_U_SURR_MAX)) && (c <= VA_U_MAX);
-}
-
-static inline void va_read_iter_start(va_read_iter_t *iter)
-{
-    iter->cur = iter->start;
-}
-
-static inline unsigned va_read_iter_take(va_read_iter_t *iter)
-{
-    return iter->take(iter);
 }
 
 static inline void va_stream_set_error(va_stream_t *s, unsigned e)

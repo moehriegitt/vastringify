@@ -3,55 +3,39 @@
 
 #include <stddef.h>
 #include <assert.h>
+#include <va_print/char.h>
 #include <va_print/utf32.h>
 #include <va_print/core.h>
 #include <va_print/impl.h>
 
-static int iter_nth(
-    unsigned *res,
-    va_read_iter_t *iter,
-    unsigned n)
-{
-    char32_t const *i = iter->cur;
-    i += n;
+/* ********************************************************************** */
+/* extern objects */
 
-    char32_t const *e = NULL;
-    if (iter->size != ~(size_t)0) {
-        e = (char32_t const *)iter->start + iter->size;
-    }
-
-    if (i == e) {
-        *res = 0;
-        return 0;
-    }
-
-    *res = *i;
-    return 1;
-}
-
-static void iter_advance(
-    va_read_iter_t *i,
-    unsigned n)
-{
-    char32_t const *s = i->cur;
-    s += n;
-    i->cur = s;
-}
+va_read_iter_vtab_t const va_char32_p_read_vtab_utf32 = {
+    "char32_t*",
+    va_char32_p_take_utf32,
+    va_char32_p_end,
+    'U',
+    {0}
+};
 
 /* ********************************************************************** */
 /* extern functions */
 
 extern unsigned va_char32_p_take_utf32(
-    va_read_iter_t *iter)
+    va_read_iter_t *iter,
+    void const *end)
 {
-    unsigned c0;
-    (void)iter_nth(&c0, iter, 0);
+    assert(iter->cur != NULL);
+    char32_t const *s = iter->cur;
+    unsigned c0 = (iter->cur == end) ? 0 : *s;
     if (c0 == 0) {
         /* end of string */
         return 0;
     }
+
+    iter->cur = (s + 1);
     if (va_u_valid(c0)) {
-        iter_advance(iter, 1);
         return c0;
     }
 
@@ -62,7 +46,6 @@ extern unsigned va_char32_p_take_utf32(
         return VA_U_REPLACEMENT;
     }
 
-    iter_advance(iter, 1);
     return c0 | VA_U_ENC_UTF32;
 }
 
@@ -94,7 +77,7 @@ extern va_stream_t *va_xprintf_char32_p_utf32(
     va_stream_t *s,
     char32_t const *x)
 {
-    va_read_iter_t iter = VA_READ_ITER(va_char32_p_take_utf32, x, ~(size_t)0);
+    va_read_iter_t iter = VA_READ_ITER(&va_char32_p_read_vtab_utf32, x);
     return va_xprintf_iter(s, &iter);
 }
 
@@ -102,7 +85,7 @@ extern va_stream_t *va_xprintf_char32_const_pp_utf32(
     va_stream_t *s,
     char32_t const **x)
 {
-    va_read_iter_t iter = VA_READ_ITER(va_char32_p_take_utf32, *x, ~(size_t)0);
+    va_read_iter_t iter = VA_READ_ITER(&va_char32_p_read_vtab_utf32, *x);
     (void)va_xprintf_iter(s, &iter);
     *x = iter.cur;
     return s;

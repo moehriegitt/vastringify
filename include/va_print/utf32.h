@@ -19,10 +19,16 @@ extern "C" {
 #endif
 
 /* ********************************************************************** */
+/* extern objects */
+
+extern va_read_iter_vtab_t const va_char32_p_read_vtab_utf32;
+
+/* ********************************************************************** */
 /* extern functions */
 
 extern unsigned va_char32_p_take_utf32(
-    va_read_iter_t *);
+    va_read_iter_t *,
+    void const *end);
 
 /**
  * Encode UTF-32 code point.

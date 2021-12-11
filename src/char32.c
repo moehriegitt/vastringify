@@ -30,3 +30,11 @@ extern void va_char32_p_put(va_stream_t *s, char32_t c)
     data[t->pos] = c;
     data[++t->pos] = 0;
 }
+
+extern void const *va_char32_p_end(
+    va_read_iter_t *iter,
+    size_t size)
+{
+    char32_t const *p = iter->cur;
+    return p + size;
+}

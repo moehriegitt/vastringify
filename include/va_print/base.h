@@ -67,11 +67,11 @@ extern "C" {
 /**
  * Compound literal of type va_stream_t.
  */
-#define VA_STREAM(F) ((va_stream_t){ F,NULL,NULL,0,1,0 })
+#define VA_STREAM(F) ((va_stream_t){ F,{0,0},0,1,0 })
 
 /** Iterator for extracting single codepoint data */
-#define VA_READ_ITER(TAKE,DATA,SIZE) \
-    ((va_read_iter_t){ (TAKE),(DATA),(SIZE),NULL })
+#define VA_READ_ITER(TAKE,DATA) \
+    ((va_read_iter_t){ (TAKE),(DATA) })
 
 /** Mask for marking enconding, also on extracted characters.
  *
@@ -150,6 +150,42 @@ extern "C" {
 /* ********************************************************************** */
 /* types */
 
+struct va_read_iter;
+
+/**
+ * String reader methods */
+typedef struct {
+    /**
+     * The name of the type */
+    char const *type;
+
+    /**
+     * Decodes one Unicode character from memory pointed to
+     * by 'data', returns it, and advances 'data' by the
+     * amount read.  It never decodes past a NUL terminator.
+     *
+     * It never decodes past 'end'.  If the sequence is
+     * incomplete because 'end' is reached or NUL is read,
+     * then 'data' is not advanced and 0 is returned.
+     *
+     * 'end' may be set to NULL to indicate that no end is
+     * given for the string, but only NUL termination terminates
+     * the string.
+     */
+    unsigned (*take)(struct va_read_iter *, void const *end);
+
+    /**
+     * Compute the end of an array */
+    void const *(*end)(struct va_read_iter *, size_t size);
+
+    /**
+     * C string indicator prefix character */
+    unsigned char str_prefix;
+
+    char _pad[sizeof(void*)-1];
+} va_read_iter_vtab_t;
+
+
 /**
  * String reader type.
  *
@@ -187,34 +223,10 @@ extern "C" {
  */
 typedef struct va_read_iter {
     /**
-     * Decodes one Unicode character from memory pointed to
-     * by 'data', returns it, and advances 'data' by the
-     * amount read.  It never decodes past a NUL terminator.
-     *
-     * It never decodes past 'end'.  If the sequence is
-     * incomplete because 'end' is reached or NUL is read,
-     * then 'data' is not advanced and 0 is returned.
-     *
-     * 'end' may be set to NULL to indicate that no end is
-     * given for the string, but only NUL termination terminates
-     * the string.
-     */
-    unsigned (*take)(struct va_read_iter *);
+     * Methods */
+    va_read_iter_vtab_t const *vtab;
     /**
-     * The start of the string of data to be decoded. */
-    void const *start;
-    /**
-     * The end of the string, i.e., the number of elements
-     * in the array pointed to by 'data'.
-     * May be ~(size_t)0 to indicate an open end where only
-     * the NUL terminator terminates the string.
-     */
-    size_t size;
-    /**
-     * The next character to be decoded.  NULL is invalid
-     * when 'take' is invoked.  Initialisation to NULL
-     * is allowed, because va_read_iter_start() resets
-     * 'cur = start'. */
+     * The next character to be decoded. */
     void const *cur;
 } va_read_iter_t;
 
@@ -251,12 +263,11 @@ typedef struct {
  * sequence), the number of erroneous code units that follow
  * can be marked using VA_ENC_EMORE, so that the encoder can
  * choose to only output a single VA_U_REPLACEMENT.  E.g.,
- * the UTF-8 decoder sets VA_ENC_EMORE to 0,1,2, or 3.
+ * the UTF-8 decoder sets VA_ENC_EMORE to 0,1, or 2.
  */
 struct va_stream {
     va_stream_vtab_t const *vtab;
-    unsigned (*get)(va_read_iter_t *);
-    void const *pat;
+    va_read_iter_t pat;
     size_t width;
     unsigned prec;
     unsigned opt;

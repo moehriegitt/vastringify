@@ -135,6 +135,10 @@ typedef struct {
 /* ********************************************************************** */
 /* extern functions */
 
+extern void const *va_char_p_end(
+    va_read_iter_t *,
+    size_t);
+
 extern void va_char_p_init(
     va_stream_t *s);
 
@@ -142,12 +146,20 @@ extern void va_char_p_put(
     va_stream_t *,
     char);
 
+extern void const *va_char16_p_end(
+    va_read_iter_t *,
+    size_t);
+
 extern void va_char16_p_init(
     va_stream_t *s);
 
 extern void va_char16_p_put(
     va_stream_t *,
     char16_t);
+
+extern void const *va_char32_p_end(
+    va_read_iter_t *,
+    size_t);
 
 extern void va_char32_p_init(
     va_stream_t *s);

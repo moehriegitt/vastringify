@@ -18,10 +18,9 @@ extern "C" {
 #endif
 
 /* ********************************************************************** */
-/* macros */
+/* extern objects */
 
-/* ********************************************************************** */
-/* types */
+extern va_read_iter_vtab_t const va_char_p_read_vtab_utf8;
 
 /* ********************************************************************** */
 /* extern functions */
@@ -48,7 +47,8 @@ extern "C" {
  * single U+FFFD error marker.
  */
 extern unsigned va_char_p_take_utf8(
-    va_read_iter_t *i);
+    va_read_iter_t *i,
+    void const *end);
 
 /**
  * Encode UTF-8 code point.

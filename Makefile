@@ -90,11 +90,11 @@ all:
 .SUFFIXES:
 
 all: \
-    out/libvastringify.a
+    out/libvastringify.a \
+    out/test1.x
 
 test: \
-    out/test2-readme.o \
-    out/test1.x
+    out/test2-readme.o
 
 out/test2-readme.c: \
     src/test2-template.c \

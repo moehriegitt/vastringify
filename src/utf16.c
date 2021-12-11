@@ -3,22 +3,33 @@
 
 #include <stddef.h>
 #include <assert.h>
+#include <va_print/char.h>
 #include <va_print/utf16.h>
 #include <va_print/core.h>
 #include <va_print/impl.h>
 
+/* ********************************************************************** */
+/* extern objects */
+
+va_read_iter_vtab_t const va_char16_p_read_vtab_utf16 = {
+    "char16_t*",
+    va_char16_p_take_utf16,
+    va_char16_p_end,
+    'u',
+    {0}
+};
+
+/* ********************************************************************** */
+/* static functions */
+
 static int iter_nth(
     unsigned *res,
     va_read_iter_t *iter,
+    void const *e,
     unsigned n)
 {
     char16_t const *i = iter->cur;
     i += n;
-
-    char16_t const *e = NULL;
-    if (iter->size != ~(size_t)0) {
-        e = (char16_t const *)iter->start + iter->size;
-    }
 
     if (i == e) {
         *res = 0;
@@ -42,11 +53,13 @@ static void iter_advance(
 /* extern functions */
 
 extern unsigned va_char16_p_take_utf16(
-    va_read_iter_t *iter)
+    va_read_iter_t *iter,
+    void const *end)
 {
+    assert(iter->cur != NULL);
     /* word 0 */
     unsigned c0;
-    (void)iter_nth(&c0, iter, 0);
+    (void)iter_nth(&c0, iter, end, 0);
     if (c0 == 0) {
         /* end of string */
         return 0;
@@ -61,7 +74,7 @@ extern unsigned va_char16_p_take_utf16(
     }
 
     unsigned cx;
-    if (!iter_nth(&cx, iter, 1)) {
+    if (!iter_nth(&cx, iter, end, 1)) {
         return 0;
     }
     if ((cx < 0xdc00) || (cx >= 0xe000)) {
@@ -114,7 +127,7 @@ extern va_stream_t *va_xprintf_char16_p_utf16(
     va_stream_t *s,
     char16_t const *x)
 {
-    va_read_iter_t iter = VA_READ_ITER(va_char16_p_take_utf16, x, ~(size_t)0);
+    va_read_iter_t iter = VA_READ_ITER(&va_char16_p_read_vtab_utf16, x);
     return va_xprintf_iter(s, &iter);
 }
 
@@ -122,7 +135,7 @@ extern va_stream_t *va_xprintf_char16_const_pp_utf16(
     va_stream_t *s,
     char16_t const **x)
 {
-    va_read_iter_t iter = VA_READ_ITER(va_char16_p_take_utf16, *x, ~(size_t)0);
+    va_read_iter_t iter = VA_READ_ITER(&va_char16_p_read_vtab_utf16, *x);
     (void)va_xprintf_iter(s, &iter);
     *x = iter.cur;
     return s;

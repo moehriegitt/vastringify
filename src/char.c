@@ -30,3 +30,11 @@ extern void va_char_p_put(va_stream_t *s, char c)
     data[t->pos] = c;
     data[++t->pos] = 0;
 }
+
+extern void const *va_char_p_end(
+    va_read_iter_t *iter,
+    size_t size)
+{
+    char const *p = iter->cur;
+    return p + size;
+}

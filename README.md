@@ -121,7 +121,7 @@ In the following, `Char` may be `char`, `char16_t`, or `char32_t`:
 ## Description
 
 This library provides a type-safe printing mechanism to print
-and kind of string of base type `char`, `char16_t`, or `char32_t`,
+any kind of string of base type `char`, `char16_t`, or `char32_t`,
 or any integer or pointer into a new string, an array, or a file.
 
 The library also provides functions for user-defined output streams
@@ -204,13 +204,17 @@ the one after the last one that was read.
 
 The following integer mask and quotation specifiers are recognised:
 
- - `h` apply the mask `0xffff` to the signed or unsigned integer, then
-   apply zero extension to unsigned values or for `c` conversion,
-   and apply sign extensino for signed values.
+ - `h` applies the mask `0xffff` to an integer, then zero extends unsigned
+   values, or sign extends signed values.
+   E.g., `va_printf("%#hx",0xabcdef)` prints `-0x3211`.
 
- - `hh` apply the mask `0xff` to the signed or unsigned integer, then
-   apply zero extension to unsigned values or for `c` conversion,
-   and apply sign extensino for signed values.
+ - `hh` applies the mask `0xff` to an integer, then zero extends unsigned
+   values, or sign extends signed values.
+   E.g., `va_printf("%hhX",0xabcdU)` prints `CD`.
+
+ - `z` reinterprets a signed integer as unsigned (mnemonic: zero
+   extension).  `z` is implicit in formats `u` (and `U`).
+   E.g., `va_printf("%hhu", -1)` prints `255`.
 
  - `q` selects C quotation for strings and char format.  There is a
    separate section below to explain this.
@@ -233,13 +237,17 @@ The following conversion letters are recognised:
  - `o` selects octal integer notation for numeric printing (including
    pointers).
 
- - `d`, `i`, or `u` selects decimal integer notation for numeric
+ - `d` or `i` selects decimal integer notation for numeric
    printing (including pointers).
+
+ - `u` is equivalent to `zd`, i.e., prints a signed integer as
+   unsigned in decimal notation.
 
  - `x` or `X` selects hexadecimal integer notation for numeric
    printing (including pointers).  `x` uses lower case digits,
    `X` upper case.  Note that this also prints signed numbers with
    a `-` if appropriate: `va_printf("%#x", -5)` prints `-0x5`.
+   There's the `z` flag to print signed integers as unsigned.
 
  - `b` or `B` selects binary integer notation for numeric
    printing (including pointers).  `b` uses lower case prefix,
@@ -247,8 +255,8 @@ The following conversion letters are recognised:
    with the `#` flag.
 
  - `e` or `E` selects Base32 notation using the digits
-    'a'..'z','2'..'7'.  `e` uses lower case digits and prefix,
-    `E` uses upper case.
+   'a'..'z','2'..'7'.  `e` uses lower case digits and prefix,
+   `E` uses upper case.
 
  - `p` prints like `#x`, and for any pointer, including strings,
    prints the pointer value instead of the contents.  Note that
@@ -256,17 +264,23 @@ The following conversion letters are recognised:
 
  - `P` is just like `p`, but with upper case hexadecial digits.
 
- - `c` prints as a character, like a one-element string.  Note
-   that the NUL character is not printed, but behaves like an
-   empty string.  For string quotation where hexadecimals are
-   printed, use lower case characters.
+ - `c` prints integers (but not pointers) as characters, like a
+   one-element string.  Note that the NUL character is not printed,
+   but behaves like an empty string.  For string quotation where
+   hexadecimals are printed, this uses lower case characters.
 
  - `C` is just like `c`, but in string quotation when hexadecimals
    are printed, uses upper case characters.
 
- - any letter not mentioned above prints in default notation,
-   if the letter is upper case, use upper case letters where
-   appropriate.
+ - `t` prints the argument type before modifications, in C
+   syntax: `int8_`..`int64_t`, `uint8_t`..`uint64_t`, `char*`,
+   `char16_t*`, `char32_t*`, `void*`.  Note that `va_error_t*`
+   arguments never print, and never consume a `%` format, but
+   always just return the stream error.
+
+ - any letter not mentioned above or any combination of letter and
+   type not mentioned above prints in default notation.  If the letter
+   is upper case, it uses upper case letters where appropriate.
 
 Function parameters behind the last format specifier in the format
 string are printed in default notation after everything that is
@@ -289,15 +303,18 @@ The following function parameter types are recognised:
 
  - `char *`, `char const *`: 8-bit character strings or
    arrays.  By default, the UTF-8 decoder is used to extract
-   code points for printing.
+   code points for printing.  Unquoted, `NULL` prints empty
+   and sets the `VA_E_NULL` error.
 
  - `char16_t *`, `char16_t const *`: 16-bit character strings or
    arrays.  By default, the UTF-16 decoder is used to extract
-   code points for printing.
+   code points for printing.  Unquoted, `NULL` prints empty
+   and sets the `VA_E_NULL` error.
 
  - `char32_t *`, `char32_t const *`: 32-bit character strings or
    arrays.  By default, the UTF-32 decoder is used to extract
-   code points for printing.
+   code points for printing.  Unquoted, `NULL` prints empty
+   and sets the `VA_E_NULL` error.
 
  - `Char **`, `Char const **`: pointers to pointers to
    characters, i.e., pointers to string, will print the string
@@ -314,7 +331,7 @@ The following function parameter types are recognised:
    stream and writes it into the passed struct.  This can
    be used to check for encoding or decoding errors, out
    of memory conditions, or hitting the end of the output
-   array.
+   array.  `NULL` must not be passed as a pointer.
 
  - `va_read_iter_t*`: this is an internal type to read from
    strings.  There are quite a few constraints on how to
@@ -406,8 +423,17 @@ units read from the string can be restricted using the format precision.
 ### C/C++ quotation
 
 - `q` quotation option in format specifier
+- when printing integers, this is ignored
+- when printing pointers, this adds the `#` flag, i.e., the
+  `0x` prefix is printed
+- when printing strings, this selects C format quoted output
+- `NULL` strings print as `NULL`, and do not set the
+  `VA_E_NULL` error, in contrast to unquoted printing.
 - without `#`, prints quotation marks, single for `c` and `C`,
   conversion, otherwise double.
+- with `z` prints the string size indicator based on the input
+  string: empty for `char`, `u` for `char16_t`, and `U` for
+  `char32_t` (and also `U` for 64-bit ints).
 - quotation of unprintable characters <U+0080 is done using
   octal quotation.
 - quotation of some characters in special notation:
@@ -424,15 +450,22 @@ units read from the string can be restricted using the format precision.
 Examples:
 
 - `va_printf("%qs", "foo'bar")` prints `"foo\'bar"`.
+- `va_printf("%qzs", u"foo'bar")` prints `u"foo\'bar"`.
 - `va_printf("%qc", 10)` prints `'\n'`.
+- `va_printf("%qzc", 10)` prints `U'\n'`
 - `va_printf("%#qc", 16)` prints `\020`.
 - `va_printf("%#0qc", 0x201c)` prints `\u201c`.
 - `va_printf("%#0qC", 0x201c)` prints `\u201C`.
+- `va_printf("%qa", (void*)18)` prints `0x12` (on normal machines)
+- `va_printf("%qa", 18)` prints `18`
 
 ### Java/JSON quotation
 
 - `Q` quotation option in format specifier
 - Like C, but always uses `\u` or `\U` and never octal
+- `NULL` strings print as `null`, and do not set the
+  `VA_E_NULL` error, in contrast to unquoted printing.
+- the `z` flag is ignored.
 
 Examples:
 
@@ -441,11 +474,19 @@ Examples:
 - `va_printf("%#Qc", 16)` prints `\u0010`.
 - `va_printf("%#0Qc", 0x201c)` prints `\u201c`.
 - `va_printf("%#0QC", 0x201c)` prints `\u201C`.
+- `va_printf("%Qa", (void*)18)` prints `0x12` (on normal machines)
+- `va_printf("%Qa", 18)` prints `18`
 
 ### Bourne Shell quotation
 
 - `k` quotation option in format specifier (mnemonic: Korn
   Shell quotation)
+- when printing integers, this is ignored
+- when printing pointers, this adds the `#` flag, i.e.,
+  the `0x` prefix is printed
+- when printing strings, this selects Shell quoted format
+- `NULL` strings print as empty string, and set the
+  `VA_E_NULL` error, just like unquoted printing.
 - uses single quotes if necessary
 - without `#`, prints quotation marks if necessary
 - others print no quotation marks for in-string printing
@@ -458,8 +499,10 @@ Examples:
 
 - `va_printf("%ks", "ab")` prints `ab`.
 - `va_printf("%ks", "a b")` prints `'a b'`.
-- `va_printf("%ks", "a'b")` returns `'a'\''b'`.
-- `va_printf("%#ks", "a'b")` returns `a'\''b`.
+- `va_printf("%ks", "a'b")` prints `'a'\''b'`.
+- `va_printf("%#ks", "a'b")` prints `a'\''b`.
+- `va_printf("%ka", (void*)18)` prints `0x12` (on normal machines)
+- `va_printf("%ka", 18)` prints `18`
 
 ## Extensions
 
@@ -489,23 +532,17 @@ Examples:
 - This library assumes that text is printed, not binary, so it will never
   print '\0'.
 
-- `%u` and `%i`/`%d` never force an interpretation of sign vs. unsigned:
-  this is done by type information, because the mechanism is type-safe.
-  Instead, `%u`, `%d`, and `%i` all just mean 'print in decimal'.
-
 - The `%x` specifier also prints negative signed numbers, again, due
-  to type-safety.
+  to type-safety.  Reinterpreting them as unsigned can be done with
+  the `z` flag.
 
 - The format specifiers are not needed to prevent the program from
   crashing, because the information about the type that is passed is
   not needed.  The format really only specifies 'print like ...', so
   by default it is recommended to just print with `%a`.
 
-- Due to the type-safety, the size length modifiers (h, hh, the others
-  are not needed) do not need to match the value that is passed, but
-  the lengths 'h' and 'hh' are interpreted as masks 0xff and 0xffff,
-  resp., i.e., you can print an unsigned long long's lowest bytes with
-  `%hhd`.
+- Due to the type-safety, most length modifiers are not supported nor
+  needed.  See `h`, `hh`, and `z` modifiers.
 
 - for strings, the precision counts the number of output bytes in the
   standard, but in this library, it is the number of input elements in
@@ -518,17 +555,6 @@ Examples:
 
 - If no format specifier is found, values are printed at the end of
   the format string in default notation (as if printed with %a).
-
-- Note that `'...'` literals have type `int` in C, so values >0x7f, with
-  its highest bit set, will be misinterpreted as illegal Unicode on
-  compilers that have signed chars.  On my compiler, printing
-  `"%c",'\xfe'` prints a replacement characters, because 0xfffffffe is
-  not valid Unicode, and this libraries implementation has no chance to
-  find out that this is in fact 0xfe (and not 0xfffe from a signed
-  short promotion).  So printing `'...'` literals is unfortunately broken,
-  without a fix.  Printing with `%hhc` works as expected.  Printing
-  `(char)'\xfe'` also works, but is more ugly in my opinion (I do not
-  like casts much).
 
 ## Restrictions
 
@@ -556,10 +582,22 @@ Examples:
   _Generic: you would not pay for floats unless you use them).
 
 - Of the size flags, `hh`, `h`, `l`, `ll`, `L`, `q`, `j`, `z`, `Z`,
-  `t`, only h and hh are implemented as masks `0xff` and `0xffff`,
-  resp., because it was felt that the others do not make much sense in
-  a type-safe setting as they exist mainly to ensure correct pointer
-  arithmetics with stdargs.h based printf.
+  `t`, only `h`, `hh`, and `z` are implemented, with slightly
+  different semantics to print unsigned integers: `h` applies a mask
+  0xffff, `hh` applies a mask `0xff` and `z` reinterprets the given
+  number as unsigned.  Due to the type-safety, the other flags are not
+  needed as the library just prints whatever is thrown at it.
+
+- `'...'` literals have type `int` in C, so values >0x7f, with its
+  highest bit set, will be misinterpreted as illegal Unicode on
+  compilers where `char` is signed.  On my compiler, printing
+  `"%c",'\xfe'` prints a replacement characters, because `\xfe` equals
+  `(int)0xfffffffe`, which is not valid Unicode, and this library
+  has no chance to find out that this is in fact `(char)0xfe`.  So
+  printing `'...'` literals is unfortunately broken, without a fix.
+  Printing with `%hhc` works as expected (but `%zc` does not,
+  because, `\xfe` is an `int`).  Printing `(char)'\xfe'` also works,
+  but is more ugly in my opinion (I do not like casts much).
 
 - gcc 6: The library itself uses relatively little stack.  But gcc
   (and also clang 3.8) accumulates the temporary stack objects in each

@@ -61,6 +61,8 @@ static void test_iuscp(
 
 extern va_stream_t foo(va_stream_t);
 
+#define TEST_IUSCP(...) test_iuscp(__LINE__, __VA_ARGS__)
+
 int main(void)
 {
     int a __unused = -547;
@@ -106,26 +108,26 @@ int main(void)
     va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a4b, "\u201c");
     free(a4b);
 
-    test_iuscp(__LINE__, "Foo: X=%i, [%8x], %s %c %px",  a, 1239, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=%i, [%#8x], %8s %c %p",  a, -1239U, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=%c, [%#08x], %.5s %c %p", 'a', -1239U, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=%i, [%#-8x], %#s %c %p", a, 1239, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=%i, [%#-08x], %-8s %c %p", a, 1239, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=%i, [%#-012x], %s %.2c %p", a, 1239, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=%i, [%#-0x], %s %8c %#p", a, 1239, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=%i, [%#-x], %s %#c %p", a, 1239, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=%i, [%x], %s %c %p", a, 1239, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=%+i, [%#9o], %s %c %p", 15, 123239, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=%+i, [%-#9o], %s %c %p", -15, 123439, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=% i, [%9o], %s %c %p", 15, 123239, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=% i, [%0o], %s %c %p", 15, 123239, "foo", 'a', p);
-    test_iuscp(__LINE__, "Foo: X=%i, [%.x], %s %c %p", a, 0, "foo", 'a', p);
-    test_iuscp(__LINE__, "blah %#*x, %s %c %p", 5, 178, "foo", 'a', p);
-    test_iuscp(__LINE__, "blah %#.*x, %s %c %p", 5, 178, "foo", 'a', p);
-    test_iuscp(__LINE__, "blah %#*.*s %c %p", 5, 8, "foo", 'a', p);
-    test_iuscp(__LINE__, "A %c 0 %c b %s %c %p", 65, 0x30, "f", 'a', p);
-    test_iuscp(__LINE__, "A %hd 0 %hhu b %s %c %p", 0x123456, 0x123456, "f", 'a', p);
-    test_iuscp(__LINE__, "A %hd 0 %hhu b %s %c %p", -172832, 0x123456, "f", 'a', p);
+    TEST_IUSCP("Foo: X=%i, [%8x], %s %c %px",  a, 1239, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=%i, [%#8x], %8s %c %p",  a, -1239U, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=%c, [%#08x], %.5s %c %p", 'a', -1239U, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=%i, [%#-8x], %#s %c %p", a, 1239, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=%i, [%#-08x], %-8s %c %p", a, 1239, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=%i, [%#-012x], %s %.2c %p", a, 1239, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=%i, [%#-0x], %s %8c %#p", a, 1239, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=%i, [%#-x], %s %#c %p", a, 1239, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=%i, [%x], %s %c %p", a, 1239, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=%+i, [%#9o], %s %c %p", 15, 123239, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=%+i, [%-#9o], %s %c %p", -15, 123439, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=% i, [%9o], %s %c %p", 15, 123239, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=% i, [%0o], %s %c %p", 15, 123239, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=%i, [%.x], %s %c %p", a, 0, "foo", 'a', p);
+    TEST_IUSCP("blah %#*x, %s %c %p", 5, 178, "foo", 'a', p);
+    TEST_IUSCP("blah %#.*x, %s %c %p", 5, 178, "foo", 'a', p);
+    TEST_IUSCP("blah %#*.*s %c %p", 5, 8, "foo", 'a', p);
+    TEST_IUSCP("A %c 0 %c b %s %c %p", 65, 0x30, "f", 'a', p);
+    TEST_IUSCP("A %hd 0 %hhu b %s %c %p", 0x123456, 0x123456, "f", 'a', p);
+    TEST_IUSCP("A %hd 0 %hhu b %s %c %p", -172832, 0x123456, "f", 'a', p);
 
     /* test special cases that work differently */
     va_printf("%u;;%.c;\n", __LINE__, 'a');
@@ -222,8 +224,98 @@ int main(void)
     va_printf("%u;;'a'\\''b';%ks\n", __LINE__, "a'b");
     va_printf("%u;;a'\\''b;%#ks\n", __LINE__, "a'b");
 
-    va_printf("%x;;-0x5;%#x\n", __LINE__, -5);
-    va_printf("%x;;-0x5;%p\n", __LINE__, -5);
+    va_printf("%u;;-0x5;%#x\n", __LINE__, -5);
+    va_printf("%u;;-0x5;%p\n", __LINE__, -5);
+
+    va_printf("%u;;4294945741;%za\n", __LINE__, (int)0xffffabcd);
+    va_printf("%u;;43981;%hza\n", __LINE__, (int)0xffffabcd);
+    va_printf("%u;;205;%hhza\n", __LINE__, (int)0xffffabcd);
+
+    va_printf("%u;;-1;%a\n", __LINE__, (signed long long)-1);
+    va_printf("%u;;-1;%a\n", __LINE__, -1);
+    va_printf("%u;;-1;%a\n", __LINE__, (short)-1);
+    va_printf("%u;;-1;%a\n", __LINE__, (signed char)-1);
+    va_printf("%u;;-1;%d\n", __LINE__, (signed long long)-1);
+    va_printf("%u;;-1;%d\n", __LINE__, -1);
+    va_printf("%u;;-1;%d\n", __LINE__, (short)-1);
+    va_printf("%u;;-1;%d\n", __LINE__, (signed char)-1);
+    va_printf("%u;;-1;%i\n", __LINE__, (signed long long)-1);
+    va_printf("%u;;-1;%i\n", __LINE__, -1);
+    va_printf("%u;;-1;%i\n", __LINE__, (short)-1);
+    va_printf("%u;;-1;%i\n", __LINE__, (signed char)-1);
+
+    va_printf("%u;;18446744073709551615;%u\n", __LINE__, (signed long long)-1);
+    va_printf("%u;;4294967295;%u\n", __LINE__, -1);
+    va_printf("%u;;65535;%u\n", __LINE__, (short)-1);
+    va_printf("%u;;255;%u\n", __LINE__, (signed char)-1);
+
+    va_printf("%u;;18446744073709551615;%d\n", __LINE__, (unsigned long long)-1);
+    va_printf("%u;;4294967295;%d\n", __LINE__, (unsigned)-1);
+    va_printf("%u;;65535;%d\n", __LINE__, (unsigned short)-1);
+    va_printf("%u;;255;%d\n", __LINE__, (unsigned char)-1);
+
+    va_printf("%u;;-0x1;%#x\n", __LINE__, (signed long long)-1);
+    va_printf("%u;;-0x1;%#x\n", __LINE__, -1);
+    va_printf("%u;;-0x1;%#x\n", __LINE__, (short)-1);
+    va_printf("%u;;-0x1;%#x\n", __LINE__, (signed char)-1);
+
+    va_printf("%u;;0xffffffffffffffff;%#zx\n", __LINE__, (signed long long)-1);
+    va_printf("%u;;0xffffffff;%#zx\n", __LINE__, -1);
+    va_printf("%u;;0xffff;%#zx\n", __LINE__, (short)-1);
+    va_printf("%u;;0xff;%#zx\n", __LINE__, (signed char)-1);
+
+    va_printf("%u;;0xffffffffffffffff;%#x\n", __LINE__, (unsigned long long)-1);
+    va_printf("%u;;0xffffffff;%#x\n", __LINE__, (unsigned)-1);
+    va_printf("%u;;0xffff;%#x\n", __LINE__, (unsigned short)-1);
+    va_printf("%u;;0xff;%#x\n", __LINE__, (unsigned char)-1);
+
+    va_printf("%u;;CD;%hhX\n", __LINE__, 0xabcdU);
+    va_printf("%u;;-0x3211;%#hx\n", __LINE__, 0xabcdef);
+    va_printf("%u;;-12817;%#hd\n", __LINE__, 0xabcdef);
+
+    va_printf("%u;;0x12;%qa\n", __LINE__, (void*)18);
+    va_printf("%u;;18;%qa\n", __LINE__, 18);
+
+    va_printf("%u;;ab;a%sb\n", __LINE__, (char *)NULL, &e);
+    assert(e.code == VA_E_NULL);
+
+    va_printf("%u;;ab;a%ksb\n", __LINE__, (char *)NULL, &e);
+    assert(e.code == VA_E_NULL);
+
+    va_printf("%u;;aNULLb;a%qsb\n", __LINE__, (char *)NULL, &e);
+    assert(e.code == VA_E_OK);
+
+    va_printf("%u;;anullb;a%Qsb\n", __LINE__, (char *)NULL, &e);
+    assert(e.code == VA_E_OK);
+
+    va_printf("%u;;0eba.BC;%#e.%E\n", __LINE__, 32, 34);
+    va_printf("%u;;0x41;%qc\n", __LINE__, (void*)65);
+    va_printf("%u;;'A';%qc\n", __LINE__, 65);
+    va_printf("%u;;0x41;%qa\n", __LINE__, (void*)65);
+    va_printf("%u;;65;%qa\n", __LINE__, 65);
+
+    va_printf("%u;;\"foo\"::char*;%qs::%=t\n", __LINE__, "foo", &e);
+    va_printf("%u;;\"foo\"::char16_t*;%qs::%=t\n", __LINE__, u"foo", &e);
+    va_printf("%u;;\"foo\"::char32_t*;%qs::%=t\n", __LINE__, U"foo", &e);
+
+    va_printf("%u;;int32_t;%t\n", __LINE__, 10);
+    va_printf("%u;;int16_t;%t\n", __LINE__, (short)10);
+    va_printf("%u;;uint16_t;%t\n", __LINE__, (unsigned short)10);
+    va_printf("%u;;void*;%t\n", __LINE__, NULL);
+    va_printf("%u;;void* x=0x10;%t x=%=qza\n", __LINE__, (void*)16);
+    va_printf("%u;;char* x=\"foo\";%t x=%=qza\n", __LINE__, "foo");
+    va_printf("%u;;int32_t x=7;%t x=%=qza\n", __LINE__, 7);
+    va_printf("%u;;char16_t* x=u\"foo\";%t x=%=qza\n", __LINE__, u"foo");
+
+    va_printf("%u;;\"\\n\";%qzs\n", __LINE__, "\n");
+    va_printf("%u;;u\"\\n\";%qzs\n", __LINE__, u"\n");
+    va_printf("%u;;U\"\\n\";%qzs\n", __LINE__, U"\n");
+    va_printf("%u;;'\\n';%qzc\n", __LINE__, (char)10);
+    va_printf("%u;;u'\\n';%qzc\n", __LINE__, (short)10);
+    va_printf("%u;;U'\\n';%qzc\n", __LINE__, 10);
+    va_printf("%u;;U'\\n';%qzc\n", __LINE__, (long long)10);
+
+    va_printf("%u;;255;%hhu\n", __LINE__, -1);
 #endif
 
     return 0;

@@ -3,22 +3,33 @@
 
 #include <stddef.h>
 #include <assert.h>
+#include <va_print/char.h>
 #include <va_print/utf8.h>
 #include <va_print/core.h>
 #include <va_print/impl.h>
 
+/* ********************************************************************** */
+/* extern objects */
+
+va_read_iter_vtab_t const va_char_p_read_vtab_utf8 = {
+    "char*",
+    va_char_p_take_utf8,
+    va_char_p_end,
+    0,
+    {0}
+};
+
+/* ********************************************************************** */
+/* static functions */
+
 static int iter_nth(
     unsigned *res,
     va_read_iter_t *iter,
+    void const *e,
     unsigned n)
 {
     unsigned char const *i = iter->cur;
     i += n;
-
-    unsigned char const *e = NULL;
-    if (iter->size != ~(size_t)0) {
-        e = (unsigned char const *)iter->start + iter->size;
-    }
 
     if (i == e) {
         *res = 0;
@@ -41,11 +52,12 @@ static void iter_advance(
 /* ********************************************************************** */
 /* extern functions */
 
-extern unsigned va_char_p_take_utf8(va_read_iter_t *iter)
+extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
 {
+    assert(iter->cur != NULL);
     /* byte 0 */
     unsigned c0;
-    (void)iter_nth(&c0, iter, 0);
+    (void)iter_nth(&c0, iter, end, 0);
     if (c0 == 0) {
         /* end of string */
         return 0;
@@ -70,7 +82,7 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter)
 
     /* byte 1 */
     unsigned cx;
-    if (!iter_nth(&cx, iter, 1)) {
+    if (!iter_nth(&cx, iter, end, 1)) {
         return 0;
     }
     assert(cx != 0);
@@ -109,7 +121,7 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter)
     }
 
     /* byte 2 */
-    if (!iter_nth(&cx, iter, 2)) {
+    if (!iter_nth(&cx, iter, end, 2)) {
         return 0;
     }
     assert(cx != 0);
@@ -127,7 +139,7 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter)
     }
 
     /* byte 3 */
-    if (!iter_nth(&cx, iter, 3)) {
+    if (!iter_nth(&cx, iter, end, 3)) {
         return 0;
     }
     assert(cx != 0);
@@ -199,7 +211,7 @@ extern va_stream_t *va_xprintf_char_p_utf8(
     va_stream_t *s,
     char const *x)
 {
-    va_read_iter_t iter = VA_READ_ITER(va_char_p_take_utf8, x, ~(size_t)0);
+    va_read_iter_t iter = VA_READ_ITER(&va_char_p_read_vtab_utf8, x);
     return va_xprintf_iter(s, &iter);
 }
 
@@ -207,7 +219,7 @@ extern va_stream_t *va_xprintf_char_const_pp_utf8(
     va_stream_t *s,
     char const **x)
 {
-    va_read_iter_t iter = VA_READ_ITER(va_char_p_take_utf8, *x, ~(size_t)0);
+    va_read_iter_t iter = VA_READ_ITER(&va_char_p_read_vtab_utf8, *x);
     (void)va_xprintf_iter(s, &iter);
     *x = iter.cur;
     return s;
