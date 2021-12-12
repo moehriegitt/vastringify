@@ -281,23 +281,25 @@ static va_stream_t *render_iter(va_stream_t *s, va_read_iter_t *iter)
 
     /* quotation marks */
     unsigned ch;
-    unsigned char prefix = 0;
-    unsigned char delim = 0;
+    unsigned delim = 0; /* byte 0 is count, byte 1 is prefix, byte 2 is delim */
     if ((s->opt & VA_OPT_VAR) == 0) {
         switch (VA_BGET(s->opt, VA_OPT_QUOTE)) {
         case VA_QUOTE_C:
-            if (VA_BGET(s->opt, VA_OPT_SIGN) == VA_SIGN_ZEXT) {
-                prefix = iter->vtab->str_prefix;
-            }
             delim = (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR) ? '\'' : '"';
+            delim = 2 + (delim << 16);
+            if (VA_BGET(s->opt, VA_OPT_SIGN) == VA_SIGN_ZEXT) {
+                delim += ((unsigned)(iter->vtab->str_prefix) << 8) + 1;
+            }
             break;
         case VA_QUOTE_J:
             delim = (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR) ? '\'' : '"';
+            delim = 2 + (delim << 16);
             break;
         case VA_QUOTE_SH:
             for (iter_start(s,iter,start); (ch = iter_take(s,iter,end)) != 0;) {
                 if (va_quote_sh(ch)) {
                     delim = '\'';
+                    delim = 2 + (delim << 16);
                     break;
                 }
             }
@@ -306,12 +308,11 @@ static va_stream_t *render_iter(va_stream_t *s, va_read_iter_t *iter)
     }
 
     /* reinterpret 'width' into how many spaces are written */
-    unsigned delim_len = delim ? 2 : 0;
-    if (s->width <= delim_len) {
+    if (s->width <= (delim & 0xff)) {
         s->width = 0;
     }
     else {
-        s->width -= delim_len;
+        s->width -= (delim & 0xff);
         s->opt |= VA_OPT_SIM;
         iter_start(s,iter,start);
         while ((s->width > 0) && ((ch = iter_take(s,iter,end)) != 0)) {
@@ -328,12 +329,12 @@ static va_stream_t *render_iter(va_stream_t *s, va_read_iter_t *iter)
     }
 
     /* meat */
-    render(s, prefix);
-    render(s, delim);
+    render(s, (delim >> 8)  & 0xff);
+    render(s, (delim >> 16) & 0xff);
     for (iter_start(s,iter,start); (ch = iter_take(s,iter,end)) != 0;) {
         render_quotec(s, ch);
     }
-    render(s, delim);
+    render(s, (delim >> 16) & 0xff);
 
     /* space */
     if ((s->opt & VA_OPT_MINUS) != 0) {
