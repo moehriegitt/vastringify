@@ -207,13 +207,13 @@ static void render_quotec(
     render(s, c);
 }
 
-static va_stream_t *render_int(
+static void render_int(
     va_stream_t *s,
     unsigned long long x,
     unsigned base,
     unsigned char prefix0);
 
-static va_stream_t *render_rawstr(va_stream_t *s, char const *start)
+static void render_rawstr(va_stream_t *s, char const *start)
 {
     assert(start != NULL);
 
@@ -240,35 +240,36 @@ static va_stream_t *render_rawstr(va_stream_t *s, char const *start)
             render(s, ' ');
         }
     }
-
-    return s;
-
 }
 
-static va_stream_t *render_ptr(va_stream_t *s, void const *x)
+static void render_ptr(va_stream_t *s, void const *x)
 {
     if (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_TYPE) {
-        return render_rawstr(s, "void*");
+        render_rawstr(s, "void*");
+        return;
     }
     if (VA_BGET(s->opt, VA_OPT_QUOTE) != 0) {
         s->opt |= VA_OPT_VAR;
     }
-    return render_int(s, (size_t)x, 16, 0);
+    render_int(s, (size_t)x, 16, 0);
+    return;
 }
 
-static va_stream_t *render_iter(va_stream_t *s, va_read_iter_t *iter)
+static void render_iter(va_stream_t *s, va_read_iter_t *iter)
 {
     switch (VA_BGET(s->opt, VA_OPT_MODE)) {
     case VA_MODE_TYPE:
-        return render_rawstr(s, iter->vtab->type);
+        render_rawstr(s, iter->vtab->type);
+        return;
     case VA_MODE_PTR:
-        return render_ptr(s, iter->cur);
+        render_ptr(s, iter->cur);
+        return;
     }
 
     if (iter->cur == NULL) {
         switch (VA_BGET(s->opt, VA_OPT_QUOTE)) {
-        case VA_QUOTE_C: return render_rawstr(s, "NULL");
-        case VA_QUOTE_J: return render_rawstr(s, "null");
+        case VA_QUOTE_C: render_rawstr(s, "NULL"); return;
+        case VA_QUOTE_J: render_rawstr(s, "null"); return;
         }
     }
 
@@ -287,8 +288,10 @@ static va_stream_t *render_iter(va_stream_t *s, va_read_iter_t *iter)
         case VA_QUOTE_C:
             delim = (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR) ? '\'' : '"';
             delim = 2 + (delim << 16);
-            if (VA_BGET(s->opt, VA_OPT_SIGN) == VA_SIGN_ZEXT) {
-                delim += ((unsigned)(iter->vtab->str_prefix) << 8) + 1;
+            if ((VA_BGET(s->opt, VA_OPT_SIGN) == VA_SIGN_ZEXT) &&
+                (iter->vtab->str_prefix))
+            {
+                delim += 1 + ((unsigned)(iter->vtab->str_prefix) << 8);
             }
             break;
         case VA_QUOTE_J:
@@ -342,11 +345,9 @@ static va_stream_t *render_iter(va_stream_t *s, va_read_iter_t *iter)
             render(s, ' ');
         }
     }
-
-    return s;
 }
 
-static va_stream_t *render_int(
+static void render_int(
     va_stream_t *s,
     unsigned long long x,
     unsigned base,
@@ -455,7 +456,6 @@ static va_stream_t *render_int(
             render(s, ' ');
         }
     }
-    return s;
 }
 
 static unsigned arr1_utf64_take(va_read_iter_t *iter, void const *end)
@@ -505,7 +505,7 @@ static va_read_iter_vtab_t const arr1_vtab_32 = {
     {0},
 };
 
-static va_stream_t *render_char(
+static void render_char(
     va_stream_t *s,
     unsigned long long x,
     unsigned sz)
@@ -516,10 +516,10 @@ static va_stream_t *render_char(
         [3] = &arr1_vtab_32,
         [7] = &arr1_vtab_32,
     };
-    return render_iter(s, &VA_READ_ITER(vtab[(sz - 1) & 7], &x));
+    render_iter(s, &VA_READ_ITER(vtab[(sz - 1) & 7], &x));
 }
 
-static va_stream_t *render_ull(va_stream_t *s, unsigned long long x, unsigned sz)
+static void render_ull(va_stream_t *s, unsigned long long x, unsigned sz)
 {
     static char const * const type_name[8] = {
         [0] = "uint8_t",
@@ -528,7 +528,8 @@ static va_stream_t *render_ull(va_stream_t *s, unsigned long long x, unsigned sz
         [7] = "uint64_t",
     };
     if (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_TYPE) {
-        return render_rawstr(s, type_name[(sz - 1) & 7]);
+        render_rawstr(s, type_name[(sz - 1) & 7]);
+        return;
     }
 
     switch (VA_BGET(s->opt, VA_OPT_SIZE)) {
@@ -538,13 +539,13 @@ static va_stream_t *render_ull(va_stream_t *s, unsigned long long x, unsigned sz
     }
 
     if (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR) {
-        return render_char(s, x, sz);
+        render_char(s, x, sz);
+        return;
     }
-
-    return render_int(s, x, 10, 0);
+    render_int(s, x, 10, 0);
 }
 
-static va_stream_t *render_sll(va_stream_t *s, long long x, unsigned sz)
+static void render_sll(va_stream_t *s, long long x, unsigned sz)
 {
     static char const * const type_name[8] = {
         [0] = "int8_t",
@@ -553,7 +554,8 @@ static va_stream_t *render_sll(va_stream_t *s, long long x, unsigned sz)
         [7] = "int64_t",
     };
     if (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_TYPE) {
-        return render_rawstr(s, type_name[(sz - 1) & 7]);
+        render_rawstr(s, type_name[(sz - 1) & 7]);
+        return;
     }
 
     switch (VA_BGET(s->opt, VA_OPT_SIZE)) {
@@ -584,10 +586,11 @@ static va_stream_t *render_sll(va_stream_t *s, long long x, unsigned sz)
 
     if (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR) {
         ux &= ~0ULL >> ((sizeof(long long) - sz) *8);
-        return render_char(s, ux, sz);
+        render_char(s, ux, sz);
+        return;
     }
 
-    return render_int(s, ux, 10, prefix0);
+    render_int(s, ux, 10, prefix0);
 }
 
 /* xprints */
@@ -938,7 +941,7 @@ extern va_stream_t *va_xprintf_char(va_stream_t *s, char x)
         return va_xprintf_schar(s, (signed char)x);
     }
     else {
-        return va_xprintf_ull(s, (unsigned char)x);
+        return va_xprintf_uchar(s, (unsigned char)x);
     }
 }
 

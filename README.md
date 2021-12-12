@@ -142,7 +142,7 @@ wrong format specifier.
 
 The format specifiers in this printing mechanism serve to define which
 output format should be used, as they are not needed for type
-information.  The format specifier "%a" can be used as a generic
+information.  The format specifier "%v" can be used as a generic
 'default' output format.
 
 ### Format Specifiers
@@ -164,7 +164,7 @@ The following flags are recognised:
      - for `B` and base 2, `0B` is prefixed,
      - for `x` and base 16, `0x` is prefixed,
      - for `X` and base 16, `0X` is prefixed,
-     - for `e` and base 32, `0d` is prefixed,
+     - for `e` and base 32, `0e` is prefixed,
      - for `E` and base 32, `0E` is prefixed.
 
  For quoted strings, this inhibits printing of delimiting quotes.
@@ -240,7 +240,10 @@ type-safety.
 
 The following conversion letters are recognised:
 
- - `a` prints anything in default notation.
+ - `v` prints anything in default notation (mnemonic: 'value').
+   There are many other unassigned letters that print in default
+   notation.  `v` is not used by standard C `printf` and seems
+   unlikely to be assigned any special notation.
 
  - `o` selects octal integer notation for numeric printing (including
    pointers).
@@ -301,28 +304,37 @@ The following function parameter types are recognised:
  - `int`, `unsigned`, `char`, `signed char`, `unsigned char`, `short`,
    `unsigned short`, `long`, `unsigned long`, `long long`,
    `unsigned long long`: these are integer and are printed
-   in unsigned or signed integer notation.
-   This means that `char`, `char16_t`, and `char32_t` all print
-   in numeric format by default, not in character format.  For
-   interpreting them as a 1-element Unicode codepoint string,
-   you need to use `c` format.  Also note that character
-   constants like `'a'` have type `int` in C and print
-   numerically by default.
+   in unsigned or signed decimal integer notation by default.
+
+   This means that `char`, `char16_t`, and `char32_t` all print in
+   numeric format by default, not in character format, as they are not
+   distinct types.  For interpreting them as a 1-element Unicode
+   codepoint string, `c` format should be used.
+
+   Also note that character constants like `'a'` have type `int` in C
+   and print numerically by default.
 
  - `char *`, `char const *`: 8-bit character strings or
-   arrays.  By default, the UTF-8 decoder is used to extract
-   code points for printing.  Unquoted, `NULL` prints empty
-   and sets the `VA_E_NULL` error.
+   arrays.  They print as is by default.
+
+   The default string encoding is UTF-8,  It can be reset to
+   a user encoding by #defining `va_char_p_decode`.  Also see
+   the section on encoding below.
+
+   Unquoted, `NULL` prints empty and sets the `VA_E_NULL` error.
+   Also see the section on quotation below.
 
  - `char16_t *`, `char16_t const *`: 16-bit character strings or
-   arrays.  By default, the UTF-16 decoder is used to extract
-   code points for printing.  Unquoted, `NULL` prints empty
-   and sets the `VA_E_NULL` error.
+   arrays.  The default encoding is UTF-16, which can be
+   switched using `va_char16_p_decode`.
+
+   Unquoted, `NULL` prints empty and sets the `VA_E_NULL` error.
 
  - `char32_t *`, `char32_t const *`: 32-bit character strings or
-   arrays.  By default, the UTF-32 decoder is used to extract
-   code points for printing.  Unquoted, `NULL` prints empty
-   and sets the `VA_E_NULL` error.
+   arrays.  The default encoding is UTF-32, which can be
+   switched using `va_char32_p_decode`.
+
+   Unquoted, `NULL` prints empty and sets the `VA_E_NULL` error.
 
  - `Char **`, `Char const **`: pointers to pointers to
    characters, i.e., pointers to string, will print the string
@@ -347,7 +359,8 @@ The following function parameter types are recognised:
    documented here.
 
  - anything else: is tried to be converted to a pointer and
-   printed like a pointer, i.e., in `%#x` format.
+   printed in hexadecimal encoding by default, i.e., in `%x`
+   format.
 
 ## Unicode
 
@@ -397,34 +410,100 @@ The following #defines switch function names:
 
 ### Format String Encoding
 
-    #define va_char_p_format utf8
+The default is UTF-8, -16, or -32 encoding, and it can be changed
+by #defining before `#include <va_print/...>`:
 
-    > va_va_take_... : char* format strings
+    #define va_char_p_format utf8
+    #define va_char16_p_format utf16
+    #define va_char32_p_format utf32
+
+These macros are appended to an identifier to find the appropriate
+reader for the format string as follows:
+
+    va_char_p_read_vtab ## va_char_p_format
+    va_char16_p_read_vtab ## va_char16_p_format
+    va_char32_p_read_vtab ## va_char32_p_format
+
+When using a different encoding than the default, it must be ensured
+that the corresponding vtab declarations are visible.
 
 ### String Value Encoding
 
+The default for reading string values is UTF-8, -16, or -32 encoding,
+for `"..."`, `u"..."`,and `U"..."` strings,resp.  The default can be
+changed by defining one of the following macros before `#include <va_print/...>`:
+
     #define va_char_p_decode utf8
+    #define va_char16_p_decode utf16
+    #define va_char32_p_decode utf32
 
-    > va_xprintf_char_p_...        : char* strings
-    > va_xprintf_char_pp_...       : char** strings
-    > va_xprintf_char_const_pp_... : char const **strings
+These macros are appended to an identifier to find the appropriate
+reader for the string value as follows:
 
-The 'pp' variants write back the end of the string, as the amount of code
-units read from the string can be restricted using the format precision.
+    va_xprintf_char_p_ ## va_char_p_decode
+    va_xprintf_char_pp_ ## va_char_p_decode
+    va_xprintf_char_const_pp_ ## va_char_p_decode
+    va_xprintf_char16_p_ ## va_char16_p_decode
+    va_xprintf_char16_pp_ ## va_char16_p_decode
+    va_xprintf_char16_const_pp_ ## va_char16_p_decode
+    va_xprintf_char32_p_ ## va_char32_p_decode
+    va_xprintf_char32_pp_ ## va_char32_p_decode
+    va_xprintf_char32_const_pp_ ## va_char32_p_decode
+
+Note that for each parameter type, a different printer function is used,
+so for a different encoding, three functions need to be provided.  A
+typical such function implementation looks as follows:
+
+    va_stream_t *va_xprintf_char_p_utf8(
+        va_stream_t *s,
+        char const *x)
+    {
+        va_read_iter_t iter = VA_READ_ITER(&va_char_p_read_vtab_utf8, x);
+        return va_xprintf_iter(s, &iter);
+    }
 
 ### Output Stream Encoding
 
+For encoding strings into character arrays, the default encoding is
+UTF-8, UTF-16, or UTF-32, depending on the string type.  To override
+the default, the following #defines can be set
+before `#include <va_print/...>`.
+
     #define va_char_p_encode utf8
+    #define va_char16_p_encode utf16
+    #define va_char32_p_encode utf32
 
-    > va_put_char_p_... : char* output stream
+These are suffixed to find the vtab object for writing:
 
-    #define va_file_encode   utf8
+    va_char_p_vtab_ ## va_char_p_encode
+    va_char16_p_vtab_ ## va_char16_p_encode
+    va_char32_p_vtab_ ## va_char32_p_encode
 
-    > va_put_file_... : FILE* output stream
+For dynamically allocated arrays, there are separate #definitions:
 
-    #define va_malloc_encode utf8
+    #define va_vec8_encode utf8
+    #define va_vec16_encode utf16
+    #define va_vec32_encode utf32
 
-    > va_put_vec_... : char* based vector output stream
+These are suffixed to find the vtab object for writing:
+
+    va_vec_vtab_ ## va_vec_encode
+    va_vec16_vtab_ ## va_vec16_encode
+    va_vec32_vtab_ ## va_vec32_encode
+
+For `FILE*` printinf, the default encoding is UTF-8, UTF-16BE,
+and UTF-32BE, depending on output character width.  The
+following #defines correspond to the encoding:
+
+    #define va_file8_encode utf8
+    #define va_file16_encode utf16be
+    #define va_file32_encode utf32be
+
+These are suffixed to find the vtab object for writing:
+
+    va_file_vtab_ ## va_file_encode
+    va_file16_vtab_ ## va_file16_encode
+    va_file32_vtab_ ## va_file32_encode
 
 ## Quotation
 
@@ -524,7 +603,7 @@ Examples:
   0eAGAIN, 0eIO, ...
 
 - any meaningless format specifier (=letter) defaults to 'print in
-  natural default form'.  It is recommended to use `%a` for default
+  natural default form'.  It is recommended to use `%v` for default
   format printing of anything.
 
 - The `=` modifier prints the last value again, possibly with a
@@ -534,6 +613,8 @@ Examples:
 
 - The `q`, `Q`, and `k` modifiers mark different kinds of quotation.
   `q` is for C, `Q` is for Java/JSON, and `k` for Bourne/Korn Shells.
+
+- The `t` format prints the input value type in C syntax.
 
 ## Differences
 
@@ -547,7 +628,7 @@ Examples:
 - The format specifiers are not needed to prevent the program from
   crashing, because the information about the type that is passed is
   not needed.  The format really only specifies 'print like ...', so
-  by default it is recommended to just print with `%a`.
+  by default it is recommended to just print with `%v`.
 
 - Due to the type-safety, most length modifiers are not supported nor
   needed.  See `h`, `hh`, and `z` modifiers.
@@ -562,7 +643,7 @@ Examples:
   includes all characters needed for quotation.
 
 - If no format specifier is found, values are printed at the end of
-  the format string in default notation (as if printed with %a).
+  the format string in default notation (as if printed with %v).
 
 ## Restrictions
 
@@ -702,7 +783,7 @@ Open a file with computed name, up to a fixed path length:
 
     FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
     {
-        return fopen(va_nprintf(80, "%a/%a%.a", dir, file, suffix), "rt");
+        return fopen(va_nprintf(80, "%v/%v%.v", dir, file, suffix), "rt");
     }
 
 The same with error checking about truncated string or en- or decoding
@@ -712,7 +793,7 @@ errors:
         char const *dir, char const *file, unsigned suffix)
     {
         va_error_t e;
-        char *fn = va_nprintf(80, "%a/%a%.a", dir, file, suffix, &e);
+        char *fn = va_nprintf(80, "%v/%v%.v", dir, file, suffix, &e);
         if (e.code != VA_E_OK) {
             return NULL;
         }
@@ -729,7 +810,7 @@ use an UTF-32 format string:
         char16_t const *dir, char16_t const *file, unsigned suffix)
     {
         va_error_t e;
-        char *fn = va_nprintf(80, U"%a/%a%.a", dir, file, suffix, &e);
+        char *fn = va_nprintf(80, U"%v/%v%.v", dir, file, suffix, &e);
         if (e.code != VA_E_OK) {
             return NULL;
         }
@@ -743,7 +824,7 @@ This can also be done by creating a dynamically allocated string with
 
     FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
     {
-        char *fn = va_mprintf(va_alloc, "%a/%a%.a", dir, file, suffix);
+        char *fn = va_mprintf(va_alloc, "%v/%v%.v", dir, file, suffix);
         if (fn == NULL) {
             return NULL;
         }
@@ -759,8 +840,8 @@ using va_lprintf():
 
     FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
     {
-        char n[va_lprintf("%a/%a%.a", dir, file, suffix)];
-        return fopen(va_szprintf(n, "%a/%a%.a", dir, file, suffix), "rt");
+        char n[va_lprintf("%v/%v%.v", dir, file, suffix)];
+        return fopen(va_szprintf(n, "%v/%v%.v", dir, file, suffix), "rt");
     }
 
 ## How Does This Work?

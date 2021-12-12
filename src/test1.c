@@ -63,6 +63,11 @@ extern va_stream_t foo(va_stream_t);
 
 #define TEST_IUSCP(...) test_iuscp(__LINE__, __VA_ARGS__)
 
+#define PRINTF0(W,F,...) va_printf("%u;%s;" W ";" F "\n", __LINE__, F, __VA_ARGS__)
+
+#define PRINTF1(F,W,...) va_printf("%u;%s;%s;" F "\n", __LINE__, F, W, __VA_ARGS__)
+#define PRINTF2(W,F,...) PRINTF1(F,W,__VA_ARGS__)
+
 int main(void)
 {
     int a __unused = -547;
@@ -72,40 +77,42 @@ int main(void)
 
 #if 1
     /* test standard printf formats against libc: */
-    va_printf("%u;;%c;\u201c\n", __LINE__, 0x201c);
     va_printf(u"%u;;%c;\u201c\n", __LINE__, 0x201c);
     va_printf(U"%u;;%c;\u201c\n", __LINE__, 0x201c);
     va_printf(u"%u;;%a;\u201c\n", __LINE__, "\u201c");
+    va_printf(u"%u;;%v;\u201c\n", __LINE__, "\u201c");
     va_printf(u"%u;;%a;\u201c\n", __LINE__, u"\u201c");
     va_printf(U"%u;;%a;\u201c\n", __LINE__, u"\u201c");
     va_printf(U"%u;;%a;\u201c\n", __LINE__, "\u201c");
     va_printf(u"%u;;%a;\u201c\n", __LINE__, U"\u201c");
-    va_printf("%u;;%a;\u201c\n", __LINE__, U"\u201c");
+
+    PRINTF1("%c", "\u201c", 0x201c);
+    PRINTF1("%a", "\u201c", U"\u201c");
 
     char16_t a1[20];
     (void)va_szprintf(a1, "test\u201c%qs", "\u201c");
-    va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a1, "\u201c");
+    PRINTF1("test\u201c%qs", a1, "\u201c");
 
     char32_t a1b[20];
     (void)va_szprintf(a1b, "test\u201c%qs", "\u201c");
-    va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a1b, "\u201c");
+    PRINTF1("test\u201c%qs", a1b, "\u201c");
 
     char16_t *a2 = va_unprintf(20, "test\u201c%qs", "\u201c");
-    va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a2, "\u201c");
+    PRINTF1("test\u201c%qs", a2, "\u201c");
 
     char32_t *a2b = va_Unprintf(20, "test\u201c%qs", "\u201c");
-    va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a2b, "\u201c");
+    PRINTF1("test\u201c%qs", a2b, "\u201c");
 
     char *a3 = va_mprintf(va_alloc, u"test\u201c%qs", "\u201c");
-    va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a3, "\u201c");
+    PRINTF1("test\u201c%qs", a3, "\u201c");
     free(a3);
 
     char16_t *a4 = va_umprintf(va_alloc, "test\u201c%qs", "\u201c");
-    va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a4, "\u201c");
+    PRINTF1("test\u201c%qs", a4, "\u201c");
     free(a4);
 
     char32_t *a4b = va_Umprintf(va_alloc, "test\u201c%qs", "\u201c");
-    va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a4b, "\u201c");
+    PRINTF1("test\u201c%qs", a4b, "\u201c");
     free(a4b);
 
     TEST_IUSCP("Foo: X=%i, [%8x], %s %c %px",  a, 1239, "foo", 'a', p);
@@ -130,17 +137,17 @@ int main(void)
     TEST_IUSCP("A %hd 0 %hhu b %s %c %p", -172832, 0x123456, "f", 'a', p);
 
     /* test special cases that work differently */
-    va_printf("%u;;%.c;\n", __LINE__, 'a');
-    va_printf("%u;;d=%d x=%#=x;d=17 x=0x11\n", __LINE__, 17);
-    va_printf("%u;;/%s/%s%.s;/etc/foo\n", __LINE__, "etc", "foo", 0);
-    va_printf("%u;;/%s/%s%.s;/etc/foo1\n", __LINE__, "etc", "foo", 1);
+    PRINTF1("%.c", "", 'a');
+    PRINTF1("d=%d x=%#=x", "d=17 x=0x11", 17);
+    PRINTF1("/%s/%s%.s", "/etc/foo", "etc", "foo", 0);
+    PRINTF1("/%s/%s%.s", "/etc/foo1", "etc", "foo", 1);
 
-    va_printf("%u;;%qa;\"f\\001o\\nou\"\n", __LINE__, "f\1o\nou");
-    va_printf("%u;;%0qa;\"f\\001o\\no\\ufffd\\ufffdu\"\n", __LINE__, "f\1o\no\x81\x82u");
+    PRINTF1("%qa", "\"f\\001o\\nou\"", "f\1o\nou");
+    PRINTF1("%0qa", "\"f\\001o\\no\\ufffd\\ufffdu\"", "f\1o\no\x81\x82u");
 
-    va_printf("%u;;%0qa;\"a\\ufffdg\"\n", __LINE__, "a\x81g");
-    va_printf("%u;;%0qa;\"a\\ufffdg\"\n", __LINE__, "a\xe1\x80g");
-    va_printf("%u;;%0qa;\"a\\ufffd\\ufffdg\"\n", __LINE__, "a\xed\xa0g");
+    PRINTF1("%0qa", "\"a\\ufffdg\"", "a\x81g");
+    PRINTF1("%0qa", "\"a\\ufffdg\"", "a\xe1\x80g");
+    PRINTF1("%0qa", "\"a\\ufffd\\ufffdg\"", "a\xed\xa0g");
 
     printf("%u;;\ufeffh\uc0c0g\u201ch;%s;\n", __LINE__, "\ufeffh\uc0c0g\u201ch");
     char *s1 = va_nprintf(20, "%a","\ufeffh\uc0c0g\u201ch");
@@ -148,174 +155,280 @@ int main(void)
     char *s2 = va_mprintf(va_alloc, "%a", "\ufeffh\uc0c0g\u201ch");
     printf("%u;;\ufeffh\uc0c0g\u201ch;%s;\n", __LINE__, s2);
     free(s2);
-    va_printf("%u;;\ufeffh\uc0c0g\u201ch;%a;\n", __LINE__, "\ufeffh\uc0c0g\u201ch");
 
-    va_printf(
-        "%u;;%0qa;\"a\\ufffd\\ufffd\\ufffdb\\ufffdc\\ufffd\\ufffdd\\ufffd\\ufffde\"\n",
-        __LINE__,
+    PRINTF1("%a", "\ufeffh\uc0c0g\u201ch", "\ufeffh\uc0c0g\u201ch");
+
+    PRINTF1(
+        "%0qa",
+        "\"a\\ufffd\\ufffd\\ufffdb\\ufffdc\\ufffd\\ufffdd\\ufffd\\ufffde\"\n",
         "\x61\xf1\x80\x80\xe1\x80\xc2\x62\x80\x63\x80\xbf\x64\xe0\x9f\x65");
 
     printf("%u;;\ufeffh\uc0c0g\u201ch;%s;\n", __LINE__, "\ufeffh\uc0c0g\u201ch");
-    va_printf("%u;;\ufeffh\uc0c0g\u201ch;%a;\n", __LINE__, "\ufeffh\uc0c0g\u201ch");
 
-    va_printf("%u;;\u201c;%c\n", __LINE__, (short)0x201c);
-    va_printf("%u;;\ua726;%c\n", __LINE__, (short)0xa726);
-    va_printf("%u;;\u00d0;%c\n", __LINE__, (signed char)0xd0);
+    PRINTF1("%a", "\ufeffh\uc0c0g\u201ch", "\ufeffh\uc0c0g\u201ch");
 
-    va_printf("%u;;%0qs;\"f\\001o\\no\\ufffdu\"\n", __LINE__, "f\1o\no\x81u");
-    va_printf("%u;;%0Qs;\"f\\u0001o\\no\\ufffdu\"\n", __LINE__, "f\1o\no\x81u");
-    va_printf("%u;;%0qc;'f\\001o\\no\\ufffdu'\n", __LINE__, "f\1o\no\x81u");
-    va_printf("%u;;%0Qc;'f\\u0001o\\no\\ufffdu'\n", __LINE__, "f\1o\no\x81u");
-    va_printf("%u;;%#0qa;f\\001o\\no\\ufffdu\n", __LINE__, "f\1o\no\x81u");
-    va_printf("%u;;%#0Qa;f\\u0001o\\no\\ufffdu\n", __LINE__, "f\1o\no\x81u");
-    va_printf("%u;;%qc;'A'\n", __LINE__, 65);
-    va_printf("%u;;%qc;'\\021'\n", __LINE__, 17);
-    va_printf("%u;;%Qc;'\\u0011'\n", __LINE__, 17);
+    PRINTF1("%c", "\u201c", (short)0x201c);
+    PRINTF1("%c", "\ua726", (short)0xa726);
+    PRINTF1("%c", "\u00d0", (signed char)0xd0);
 
-    va_printf("%u;;%kc;foo\n", __LINE__, "foo");
-    va_printf("%u;;%ks;foo\n", __LINE__, "foo");
-    va_printf("%u;;%kc;'foo foo'\n", __LINE__, "foo foo");
-    va_printf("%u;;%ks;'foo foo'\n", __LINE__, "foo foo");
-    va_printf("%u;;%kc;'foo '\\''foo'\n", __LINE__, "foo 'foo");
-    va_printf("%u;;%ks;'foo '\\''foo'\n", __LINE__, "foo 'foo");
+    PRINTF1("%0qs", "\"f\\001o\\no\\ufffdu\"", "f\1o\no\x81u");
+    PRINTF1("%0Qs", "\"f\\u0001o\\no\\ufffdu\"", "f\1o\no\x81u");
+    PRINTF1("%0qc", "'f\\001o\\no\\ufffdu'", "f\1o\no\x81u");
+    PRINTF1("%0Qc", "'f\\u0001o\\no\\ufffdu'", "f\1o\no\x81u");
+    PRINTF1("%#0qa", "f\\001o\\no\\ufffdu", "f\1o\no\x81u");
+    PRINTF1("%#0Qa", "f\\u0001o\\no\\ufffdu", "f\1o\no\x81u");
+    PRINTF1("%qc", "'A'", 65);
+    PRINTF1("%qc", "'\\021'", 17);
+    PRINTF1("%Qc", "'\\u0011'", 17);
 
-    va_printf("%u;;%d;65\n", __LINE__, (char)'A');
-    va_printf("%u;;%d;65\n", __LINE__, (signed char)'A');
-    va_printf("%u;;%d;65\n", __LINE__, 'A');
+    PRINTF1("%kc", "foo", "foo");
+    PRINTF1("%ks", "foo", "foo");
+    PRINTF1("%kc", "'foo foo'", "foo foo");
+    PRINTF1("%ks", "'foo foo'", "foo foo");
+    PRINTF1("%kc", "'foo '\\''foo'", "foo 'foo");
+    PRINTF1("%ks", "'foo '\\''foo'", "foo 'foo");
 
-    va_printf("%u;;%d;-1\n", __LINE__, (char)-1);
-    va_printf("%u;;%d;-1\n", __LINE__, (signed char)-1);
-    va_printf("%u;;%d;-1\n", __LINE__, (signed short)-1);
+    PRINTF1("%d", "65", (char)'A');
+    PRINTF1("%d", "65", (signed char)'A');
+    PRINTF1("%d", "65", 'A');
+
+    PRINTF1("%d", "-1", (char)-1);
+    PRINTF1("%d", "-1", (signed char)-1);
+    PRINTF1("%d", "-1", (signed short)-1);
 
     va_error_t e = {0};
-    va_printf("%u;;%0qc;'\\ufffd\\ufffd\\ufffd'\n", __LINE__, "\xe0\x90\x80", &e);
+    PRINTF1("%0qc", "'\\ufffd\\ufffd\\ufffd'", "\xe0\x90\x80", &e);
     assert(e.code == VA_E_DECODE); /* from UTF-8 input decoding */
-    va_printf("%u;;%0qc;'\\ufffd'\n", __LINE__, 0xd97fu, &e);
+    PRINTF1("%0qc", "'\\ufffd'", 0xd97fu, &e);
     assert(e.code == VA_E_ENCODE); /* from quotation */
-    va_printf("%u;;%c;\ufffd\n", __LINE__, 0xd97fu, &e);
+    PRINTF1("%c", "\ufffd", 0xd97fu, &e);
     assert(e.code == VA_E_ENCODE); /* from UTF-8 output encoding */
 
-    va_printf("%u;;\"\";%1qs\n", __LINE__, "");
+    PRINTF2("\"\"", "%1qs", "");
 
-    va_printf("%u;;16 0x10;%d %=#x\n", __LINE__, 16);
+    PRINTF2("16 0x10", "%d %=#x", 16);
 
     char const *foo = "fo\no";
-    va_printf("%u;;\"fo\\no\" %#x;%qs %=p\n", __LINE__, (size_t)foo, foo);
-    va_printf("%u;;%#x \"fo\\no\";%p %=qs\n", __LINE__, (size_t)foo, foo);
+    PRINTF0("\"fo\\no\" %#x", "%qs %=p", (size_t)foo, foo);
+    PRINTF0("%#x \"fo\\no\"", "%p %=qs", (size_t)foo, foo);
+
     va_printf("%u;;1016;%x", __LINE__, 16, 16); va_printf("\n");
+
     char const *abc = "abc";
-    va_printf("%u;;aaba5;%.1s%=.2s%=.1s%u\n", __LINE__, &abc, 5);
-    va_printf("%u;;bc5;%s%u\n", __LINE__, abc, 5);
+    PRINTF2("aaba5", "%.1s%=.2s%=.1s%u", &abc, 5);
+    PRINTF2("bc5", "%s%u", abc, 5);
 
-    va_printf("%u;;\"foo\\'bar\";%qs\n", __LINE__, "foo'bar");
-    va_printf("%u;;'\\n';%qc\n", __LINE__, 10);
-    va_printf("%u;;\\020;%#qc\n", __LINE__, 16);
-    va_printf("%u;;\\u201c;%#0qc\n", __LINE__, 0x201c);
-    va_printf("%u;;\\u201C;%#0qC\n", __LINE__, 0x201c);
+    PRINTF2("\"foo\\'bar\"", "%qs", "foo'bar");
+    PRINTF2("'\\n'", "%qc", 10);
+    PRINTF2("\\020", "%#qc", 16);
+    PRINTF2("\\u201c", "%#0qc", 0x201c);
+    PRINTF2("\\u201C", "%#0qC", 0x201c);
 
-    va_printf("%u;;\"foo\\'bar\";%Qs\n", __LINE__, "foo'bar");
-    va_printf("%u;;'\\n';%Qc\n", __LINE__, 10);
-    va_printf("%u;;\\u0010;%#Qc\n", __LINE__, 16);
-    va_printf("%u;;\\u201c;%#0Qc\n", __LINE__, 0x201c);
-    va_printf("%u;;\\u201C;%#0QC\n", __LINE__, 0x201c);
+    PRINTF2("\"foo\\'bar\"", "%Qs", "foo'bar");
+    PRINTF2("'\\n'", "%Qc", 10);
+    PRINTF2("\\u0010", "%#Qc", 16);
+    PRINTF2("\\u201c", "%#0Qc", 0x201c);
+    PRINTF2("\\u201C", "%#0QC", 0x201c);
 
-    va_printf("%u;;ab;%ks\n", __LINE__, "ab");
-    va_printf("%u;;'a b';%ks\n", __LINE__, "a b");
-    va_printf("%u;;'a'\\''b';%ks\n", __LINE__, "a'b");
-    va_printf("%u;;a'\\''b;%#ks\n", __LINE__, "a'b");
+    PRINTF2("ab", "%ks", "ab");
+    PRINTF2("'a b'", "%ks", "a b");
+    PRINTF2("'a'\\''b'", "%ks", "a'b");
+    PRINTF2("a'\\''b", "%#ks", "a'b");
 
-    va_printf("%u;;-0x5;%#x\n", __LINE__, -5);
-    va_printf("%u;;-0x5;%p\n", __LINE__, -5);
+    PRINTF2("-0x5", "%#x", -5);
+    PRINTF2("-0x5", "%p", -5);
 
-    va_printf("%u;;4294945741;%za\n", __LINE__, (int)0xffffabcd);
-    va_printf("%u;;43981;%hza\n", __LINE__, (int)0xffffabcd);
-    va_printf("%u;;205;%hhza\n", __LINE__, (int)0xffffabcd);
+    PRINTF2("4294945741", "%za", (int)0xffffabcd);
+    PRINTF2("43981", "%hza", (int)0xffffabcd);
+    PRINTF2("205", "%hhza", (int)0xffffabcd);
 
-    va_printf("%u;;-1;%a\n", __LINE__, (signed long long)-1);
-    va_printf("%u;;-1;%a\n", __LINE__, -1);
-    va_printf("%u;;-1;%a\n", __LINE__, (short)-1);
-    va_printf("%u;;-1;%a\n", __LINE__, (signed char)-1);
-    va_printf("%u;;-1;%d\n", __LINE__, (signed long long)-1);
-    va_printf("%u;;-1;%d\n", __LINE__, -1);
-    va_printf("%u;;-1;%d\n", __LINE__, (short)-1);
-    va_printf("%u;;-1;%d\n", __LINE__, (signed char)-1);
-    va_printf("%u;;-1;%i\n", __LINE__, (signed long long)-1);
-    va_printf("%u;;-1;%i\n", __LINE__, -1);
-    va_printf("%u;;-1;%i\n", __LINE__, (short)-1);
-    va_printf("%u;;-1;%i\n", __LINE__, (signed char)-1);
+    PRINTF2("-1", "%a", (signed long long)-1);
+    PRINTF2("-1", "%a", -1);
+    PRINTF2("-1", "%a", (short)-1);
+    PRINTF2("-1", "%a", (signed char)-1);
+    PRINTF2("-1", "%d", (signed long long)-1);
+    PRINTF2("-1", "%d", -1);
+    PRINTF2("-1", "%d", (short)-1);
+    PRINTF2("-1", "%d", (signed char)-1);
+    PRINTF2("-1", "%i", (signed long long)-1);
+    PRINTF2("-1", "%i", -1);
+    PRINTF2("-1", "%i", (short)-1);
+    PRINTF2("-1", "%i", (signed char)-1);
 
-    va_printf("%u;;18446744073709551615;%u\n", __LINE__, (signed long long)-1);
-    va_printf("%u;;4294967295;%u\n", __LINE__, -1);
-    va_printf("%u;;65535;%u\n", __LINE__, (short)-1);
-    va_printf("%u;;255;%u\n", __LINE__, (signed char)-1);
+    PRINTF2("18446744073709551615", "%u", (signed long long)-1);
+    PRINTF2("4294967295", "%u", -1);
+    PRINTF2("65535", "%u", (short)-1);
+    PRINTF2("255", "%u", (signed char)-1);
 
-    va_printf("%u;;18446744073709551615;%d\n", __LINE__, (unsigned long long)-1);
-    va_printf("%u;;4294967295;%d\n", __LINE__, (unsigned)-1);
-    va_printf("%u;;65535;%d\n", __LINE__, (unsigned short)-1);
-    va_printf("%u;;255;%d\n", __LINE__, (unsigned char)-1);
+    PRINTF2("18446744073709551615", "%d", (unsigned long long)-1);
+    PRINTF2("4294967295", "%d", (unsigned)-1);
+    PRINTF2("65535", "%d", (unsigned short)-1);
+    PRINTF2("255", "%d", (unsigned char)-1);
 
-    va_printf("%u;;-0x1;%#x\n", __LINE__, (signed long long)-1);
-    va_printf("%u;;-0x1;%#x\n", __LINE__, -1);
-    va_printf("%u;;-0x1;%#x\n", __LINE__, (short)-1);
-    va_printf("%u;;-0x1;%#x\n", __LINE__, (signed char)-1);
+    PRINTF2("-0x1", "%#x", (signed long long)-1);
+    PRINTF2("-0x1", "%#x", -1);
+    PRINTF2("-0x1", "%#x", (short)-1);
+    PRINTF2("-0x1", "%#x", (signed char)-1);
 
-    va_printf("%u;;0xffffffffffffffff;%#zx\n", __LINE__, (signed long long)-1);
-    va_printf("%u;;0xffffffff;%#zx\n", __LINE__, -1);
-    va_printf("%u;;0xffff;%#zx\n", __LINE__, (short)-1);
-    va_printf("%u;;0xff;%#zx\n", __LINE__, (signed char)-1);
+    PRINTF2("0xffffffffffffffff", "%#zx", (signed long long)-1);
+    PRINTF2("0xffffffff", "%#zx", -1);
+    PRINTF2("0xffff", "%#zx", (short)-1);
+    PRINTF2("0xff", "%#zx", (signed char)-1);
 
-    va_printf("%u;;0xffffffffffffffff;%#x\n", __LINE__, (unsigned long long)-1);
-    va_printf("%u;;0xffffffff;%#x\n", __LINE__, (unsigned)-1);
-    va_printf("%u;;0xffff;%#x\n", __LINE__, (unsigned short)-1);
-    va_printf("%u;;0xff;%#x\n", __LINE__, (unsigned char)-1);
+    PRINTF2("0xffffffffffffffff", "%#x", (unsigned long long)-1);
+    PRINTF2("0xffffffff", "%#x", (unsigned)-1);
+    PRINTF2("0xffff", "%#x", (unsigned short)-1);
+    PRINTF2("0xff", "%#x", (unsigned char)-1);
 
-    va_printf("%u;;CD;%hhX\n", __LINE__, 0xabcdU);
-    va_printf("%u;;-0x3211;%#hx\n", __LINE__, 0xabcdef);
-    va_printf("%u;;-12817;%#hd\n", __LINE__, 0xabcdef);
+    PRINTF2("CD", "%hhX", 0xabcdU);
+    PRINTF2("-0x3211", "%#hx", 0xabcdef);
+    PRINTF2("-12817", "%#hd", 0xabcdef);
 
-    va_printf("%u;;0x12;%qa\n", __LINE__, (void*)18);
-    va_printf("%u;;18;%qa\n", __LINE__, 18);
+    PRINTF2("0x12", "%qa", (void*)18);
+    PRINTF2("18", "%qa", 18);
 
-    va_printf("%u;;ab;a%sb\n", __LINE__, (char *)NULL, &e);
+    PRINTF2("ab", "a%sb", (char *)NULL, &e);
     assert(e.code == VA_E_NULL);
 
-    va_printf("%u;;ab;a%ksb\n", __LINE__, (char *)NULL, &e);
+    PRINTF2("ab", "a%ksb", (char *)NULL, &e);
     assert(e.code == VA_E_NULL);
 
-    va_printf("%u;;aNULLb;a%qsb\n", __LINE__, (char *)NULL, &e);
+    PRINTF2("aNULLb", "a%qsb", (char *)NULL, &e);
     assert(e.code == VA_E_OK);
 
-    va_printf("%u;;anullb;a%Qsb\n", __LINE__, (char *)NULL, &e);
+    PRINTF2("anullb", "a%Qsb", (char *)NULL, &e);
     assert(e.code == VA_E_OK);
 
-    va_printf("%u;;0eba.BC;%#e.%E\n", __LINE__, 32, 34);
-    va_printf("%u;;0x41;%qc\n", __LINE__, (void*)65);
-    va_printf("%u;;'A';%qc\n", __LINE__, 65);
-    va_printf("%u;;0x41;%qa\n", __LINE__, (void*)65);
-    va_printf("%u;;65;%qa\n", __LINE__, 65);
+    PRINTF2("0eba.BC", "%#e.%E", 32, 34);
+    PRINTF2("0x41", "%qc", (void*)65);
+    PRINTF2("'A'", "%qc", 65);
+    PRINTF2("0x41", "%qa", (void*)65);
+    PRINTF2("65", "%qa", 65);
 
-    va_printf("%u;;\"foo\"::char*;%qs::%=t\n", __LINE__, "foo", &e);
-    va_printf("%u;;\"foo\"::char16_t*;%qs::%=t\n", __LINE__, u"foo", &e);
-    va_printf("%u;;\"foo\"::char32_t*;%qs::%=t\n", __LINE__, U"foo", &e);
+    PRINTF2("\"foo\"::char*", "%qs::%=t", "foo", &e);
+    PRINTF2("\"foo\"::char16_t*", "%qs::%=t", u"foo", &e);
+    PRINTF2("\"foo\"::char32_t*", "%qs::%=t", U"foo", &e);
 
-    va_printf("%u;;int32_t;%t\n", __LINE__, 10);
-    va_printf("%u;;int16_t;%t\n", __LINE__, (short)10);
-    va_printf("%u;;uint16_t;%t\n", __LINE__, (unsigned short)10);
-    va_printf("%u;;void*;%t\n", __LINE__, NULL);
-    va_printf("%u;;void* x=0x10;%t x=%=qza\n", __LINE__, (void*)16);
-    va_printf("%u;;char* x=\"foo\";%t x=%=qza\n", __LINE__, "foo");
-    va_printf("%u;;int32_t x=7;%t x=%=qza\n", __LINE__, 7);
-    va_printf("%u;;char16_t* x=u\"foo\";%t x=%=qza\n", __LINE__, u"foo");
+    PRINTF2("int32_t", "%t", 10);
+    PRINTF2("int16_t", "%t", (short)10);
+    PRINTF2("uint16_t", "%t", (unsigned short)10);
+    PRINTF2("void*", "%t", NULL);
+    PRINTF2("void* x=0x10", "%t x=%=qza", (void*)16);
+    PRINTF2("char* x=\"foo\"", "%t x=%=qza", "foo");
+    PRINTF2("int32_t x=7", "%t x=%=qza", 7);
+    PRINTF2("char16_t* x=u\"foo\"", "%t x=%=qza", u"foo");
 
-    va_printf("%u;;\"\\n\";%qzs\n", __LINE__, "\n");
-    va_printf("%u;;u\"\\n\";%qzs\n", __LINE__, u"\n");
-    va_printf("%u;;U\"\\n\";%qzs\n", __LINE__, U"\n");
-    va_printf("%u;;'\\n';%qzc\n", __LINE__, (char)10);
-    va_printf("%u;;u'\\n';%qzc\n", __LINE__, (short)10);
-    va_printf("%u;;U'\\n';%qzc\n", __LINE__, 10);
-    va_printf("%u;;U'\\n';%qzc\n", __LINE__, (long long)10);
+    PRINTF2("\"\\n\"", "%qzs", "\n");
+    PRINTF2("u\"\\n\"", "%qzs", u"\n");
+    PRINTF2("U\"\\n\"", "%qzs", U"\n");
+    PRINTF2("'\\n'", "%qzc", (char)10);
+    PRINTF2("u'\\n'", "%qzc", (short)10);
+    PRINTF2("U'\\n'", "%qzc", 10);
+    PRINTF2("U'\\n'", "%qzc", (long long)10);
 
-    va_printf("%u;;255;%hhu\n", __LINE__, -1);
+    PRINTF2("255", "%hhu", -1);
+
+    PRINTF2("NULL  a", "%-6qsa", (char*)NULL);
+    PRINTF2("null  a", "%-6Qsa", (char*)NULL);
+    PRINTF2("   NULLa", "%7qsa", (char*)NULL);
+    PRINTF2("   nulla", "%7Qsa", (char*)NULL);
+    PRINTF2("NULL  a", "%*qsa", -6, (char*)NULL);
+    PRINTF2("null  a", "%*Qsa", -6, (char*)NULL);
+    PRINTF2("NULL  a", "%-*qsa",  6ULL, (char*)NULL);
+    PRINTF2("null  a", "%-*Qsa",  6ULL, (char*)NULL);
+    PRINTF2("   NULLa", "%*qsa", 7, (char*)NULL);
+    PRINTF2("   nulla", "%*Qsa", 7, (char*)NULL);
+    PRINTF2("NULLa", "%-2.qsa", (char*)NULL);
+    PRINTF2("nulla", "%-2.Qsa", (char*)NULL);
+    PRINTF2("NULLa", "%-2.8qsa", (char*)NULL);
+    PRINTF2("nulla", "%-2.8Qsa", (char*)NULL);
+    PRINTF2("NULLa", "%-4.2qsa", (char*)NULL);
+    PRINTF2("nulla", "%-4.2Qsa", (char*)NULL);
+
+    PRINTF2("\"j\"   a", "%-6qsa", "j");
+    PRINTF2("\"j\"   a", "%-6Qsa", "j");
+    PRINTF2("    \"j\"a", "%7qsa", "j");
+    PRINTF2("    \"j\"a", "%7Qsa", "j");
+    PRINTF2("\"j\"   a", "%*qsa", -6, "j");
+    PRINTF2("\"j\"   a", "%*Qsa", -6, "j");
+    PRINTF2("\"j\"   a", "%-*qsa",  6ULL, "j");
+    PRINTF2("\"j\"   a", "%-*Qsa",  6ULL, "j");
+    PRINTF2("    \"j\"a", "%*qsa", 7, "j");
+    PRINTF2("    \"j\"a", "%*Qsa", 7, "j");
+    PRINTF2("\"\"a", "%-2.qsa", "j");
+    PRINTF2("\"\"a", "%-2.Qsa", "j");
+    PRINTF2("\"\" a", "%-3.qsa", "j");
+    PRINTF2("\"\" a", "%-3.Qsa", "j");
+    PRINTF2("\"j\"a", "%-2.8qsa", "j");
+    PRINTF2("\"j\"a", "%-2.8Qsa", "j");
+    PRINTF2("\"j\" a", "%-4.2qsa", "j");
+    PRINTF2("\"j\" a", "%-4.2Qsa", "j");
+
+    PRINTF2("\"j\"   a", "%-6qsa", u"j");
+    PRINTF2("\"j\"   a", "%-6Qsa", U"j");
+    PRINTF2("    \"j\"a", "%7qsa", u"j");
+    PRINTF2("    \"j\"a", "%7Qsa", U"j");
+    PRINTF2("\"j\"   a", "%*qsa", -6, u"j");
+    PRINTF2("\"j\"   a", "%*Qsa", -6, U"j");
+    PRINTF2("\"j\"   a", "%-*qsa",  6ULL, u"j");
+    PRINTF2("\"j\"   a", "%-*Qsa",  6ULL, U"j");
+    PRINTF2("    \"j\"a", "%*qsa", 7, u"j");
+    PRINTF2("    \"j\"a", "%*Qsa", 7, U"j");
+    PRINTF2("\"\"a", "%-2.qsa", u"j");
+    PRINTF2("\"\"a", "%-2.Qsa", U"j");
+    PRINTF2("\"\" a", "%-3.qsa", u"j");
+    PRINTF2("\"\" a", "%-3.Qsa", U"j");
+    PRINTF2("\"j\"a", "%-2.8qsa", u"j");
+    PRINTF2("\"j\"a", "%-2.8Qsa", U"j");
+    PRINTF2("\"j\" a", "%-4.2qsa", u"j");
+    PRINTF2("\"j\" a", "%-4.2Qsa", U"j");
+
+    PRINTF2("u\"j\"  a", "%-6qzsa", u"j");
+    PRINTF2("\"j\"   a", "%-6Qzsa", U"j");
+    PRINTF2("   U\"j\"a", "%7qzsa", U"j");
+    PRINTF2("    \"j\"a", "%7Qzsa", u"j");
+    PRINTF2("u\"j\"  a", "%*qzsa", -6, u"j");
+    PRINTF2("\"j\"   a", "%*Qzsa", -6, U"j");
+    PRINTF2("U\"j\"  a", "%-*qzsa",  6ULL, U"j");
+    PRINTF2("\"j\"   a", "%-*Qzsa",  6ULL, u"j");
+    PRINTF2("   u\"j\"a", "%*qzsa", 7, u"j");
+    PRINTF2("    \"j\"a", "%*Qzsa", 7, U"j");
+    PRINTF2("u\"\"a", "%-2.qzsa", u"j");
+    PRINTF2("\"\"a", "%-2.Qzsa", U"j");
+    PRINTF2("U\"\"a", "%-3.qzsa", U"j");
+    PRINTF2("\"\" a", "%-3.Qzsa", u"j");
+    PRINTF2("u\"j\"a", "%-2.8qzsa", u"j");
+    PRINTF2("\"j\"a", "%-2.8Qzsa", U"j");
+    PRINTF2("u\"j\"a", "%-4.2qzsa", u"j");
+    PRINTF2("\"j\" a", "%-4.2Qzsa", U"j");
+
+    PRINTF2("   \"abc\",", "%8qzv,", "abc");
+    PRINTF2("  u\"abc\",", "%8qzv,", u"abc");
+    PRINTF2("  U\"abc\",", "%8qzv,", U"abc");
+
+    PRINTF2("     \'A\',", "%8qzc,", (char)65);
+    PRINTF2("    u\'A\',", "%8qzc,", (short)65);
+    PRINTF2("    U\'A\',", "%8qzc,", (int)65);
+    PRINTF2("    U\'A\',", "%8qzc,", (long)65);
+    PRINTF2("    U\'A\',", "%8qzc,", (long long)65);
+    PRINTF2("     \'A\',", "%8qzc,", (unsigned char)65);
+    PRINTF2("    u\'A\',", "%8qzc,", (unsigned short)65);
+    PRINTF2("    U\'A\',", "%8qzc,", (unsigned int)65);
+    PRINTF2("    U\'A\',", "%8qzc,", (unsigned long)65);
+    PRINTF2("    U\'A\',", "%8qzc,", (unsigned long long)65);
+
+    PRINTF2("char32_t*  x =     U\"j\",", "%-10t x = %=8qzv,", U"j");
+    PRINTF2("char16_t*  x =     u\"j\",", "%-10t x = %=8qzv,", u"j");
+    PRINTF2("char*      x =      abc,", "%-10t x = %=8zv,", "abc");
+    PRINTF2("char*      x =    \"abc\",", "%-10t x = %=8qzv,", "abc");
+    PRINTF2("int8_t     x =      \'c\',", "%-10t x = %=8qzc,", (signed char)'c');
+    PRINTF2("int16_t    x =     u\'c\',", "%-10t x = %=8qzc,", (short)'c');
+    PRINTF2("int32_t    x =     U\'c\',", "%-10t x = %=8qzc,", (int)'c');
+    PRINTF2("int64_t    x =     U\'c\',", "%-10t x = %=8qzc,", (long long)'c');
+    PRINTF2("uint8_t    x =      \'c\',", "%-10t x = %=8qzc,", (unsigned char)'c');
+    PRINTF2("uint16_t   x =     u\'c\',", "%-10t x = %=8qzc,", (unsigned short)'c');
+    PRINTF2("uint32_t   x =     U\'c\',", "%-10t x = %=8qzc,", (unsigned)'c');
+    PRINTF2("uint64_t   x =     U\'c\',", "%-10t x = %=8qzc,", (unsigned long long)'c');
 #endif
 
     return 0;
