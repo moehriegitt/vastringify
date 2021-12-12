@@ -491,7 +491,7 @@ These are suffixed to find the vtab object for writing:
     va_vec16_vtab_ ## va_vec16_encode
     va_vec32_vtab_ ## va_vec32_encode
 
-For `FILE*` printinf, the default encoding is UTF-8, UTF-16BE,
+For `FILE*` output, the default encoding is UTF-8, UTF-16BE,
 and UTF-32BE, depending on output character width.  The
 following #defines correspond to the encoding:
 
@@ -528,10 +528,13 @@ These are suffixed to find the vtab object for writing:
 - `0` flag quotes all non-ASCII using `\u` or `\U`.  Note
   that `\x` is not used, because it may not terminate, so
   quoting `\x1` plus `1` is more complicated.
-- chars that are marked as decoding errors are quoted as
-  `\ufffd`, the replacement character, to avoid mixing encoding
-  errors with `\u` quotation, which would make the resulting
-  string more wrong than with only the encoding errors.
+- with `0` flag, chars that are marked as decoding errors are
+  quoted as `\ufffd`, the replacement character, to avoid
+  printing encoding errors with `\u` quotation, which would
+  make the resulting string more wrong than with only the
+  encoding errors.  Without `0` flag, encoding errors are
+  passed through if the input encoding equals output
+  encoding, otherwise `U+FFFD` is encoded.
 - upper case formats use upper case letters in hexadecimals
 
 Examples:
@@ -545,6 +548,7 @@ Examples:
 - `va_printf("%#0qC", 0x201c)` prints `\u201C`.
 - `va_printf("%qa", (void*)18)` prints `0x12` (on normal machines)
 - `va_printf("%qa", 18)` prints `18`
+- `va_printf("%0qa", u"\xd801") prints `"\xfffd"`
 
 ### Java/JSON quotation
 

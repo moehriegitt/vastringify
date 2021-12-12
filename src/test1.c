@@ -429,6 +429,8 @@ int main(void)
     PRINTF2("uint16_t   x =     u\'c\',", "%-10t x = %=8qzc,", (unsigned short)'c');
     PRINTF2("uint32_t   x =     U\'c\',", "%-10t x = %=8qzc,", (unsigned)'c');
     PRINTF2("uint64_t   x =     U\'c\',", "%-10t x = %=8qzc,", (unsigned long long)'c');
+
+    PRINTF2("\"\\ufffd\"", "%0qa", u"\xd801");
 #endif
 
     return 0;
