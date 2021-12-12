@@ -2,19 +2,27 @@
 
 This uses macro magic, compound literals, and _Generic to take
 printf() to the next level: type-safe printing, printing into compound
-literal char arrays, full support for UTF-8, 16, and 32, with good
-error and pass-through handling.
+literal char arrays, easy UTF-8, -16, and -32, with good error
+handling.
 
-The goal is to be safe and remove the need for varargs, and also to
-have little stack usage with the printfs that are provided, to make
-this suitable even for embedded software.
+The goal is to be safe by removing the need for function varargs.
 
 The usual C printf formatting syntax is used, with some restrictions
-and some extensions.
+and quite a few extensions.
+
+This let's you mix UTF-8, -16, -32 strings seamlessly in input and
+output strings, without manual string format conversions, and without
+using different format specifiers or print function names.
+
+This liberates you from thinking about `%u` vs. `%lu` vs. `%llu`
+vs. `%zu`, even in portable code with different integer types.
 
 'Type-safe' in this context does not mean that you get more compile
-errors, but that the format specifier does not specify the argument
-type, but just defines the print format.
+errors, but that the format specifier does not need to specify the
+argument type, but just defines the print format.  In fact, format
+strings with this library will have less compile-time checking (namely
+none) than with modern compilers for standard `printf`.  This approach
+is still safer.
 
 ## Compatibility
 
@@ -558,6 +566,16 @@ Examples:
 
 ## Restrictions
 
+- Compiling `printf` with any modern compiler gives you compile time
+  warnings about the argument type vs. format string consistency.  If
+  these warnings are gone, there are usually no typing problems left.
+  For this library, no such warnings can be issued.  And while it is
+  type safe, i.e., crashes are more unlikely, particularly the
+  argument count va. format specifier count is not checked, while it
+  is checked in `printf` with a modern compiler.  With this library,
+  printing too many or too few arguments will result in undesirable
+  output.
+
 - `%n` is not implemented, because pointers to integers are already
   used for strings, and the ambiguity between 'size_t*' and
   `char32_t*` is common on many 32-bit systems, where both are
@@ -617,10 +635,60 @@ Examples:
 
 ## Q&A
 
-- Q: Why formatted printing?  A: Because it is nicer, and also it is
-  feasible for Gnu gettext, which e.g. C++'s `cout<<` is not.  A:
-  Because I like the string template based approach and find it more
-  concise and can read it with less effort.
+- Q: Why formatted printing?
+
+  A: Because it is nicer, and also it is feasible for Gnu gettext,
+  which e.g. C++'s `cout<<` is not.  A: Because I like the string
+  template based approach and find it more concise and can read it
+  with less effort.
+
+- Q: Is this perfect?
+
+  A: Well, no.  It is hard to extend for other types to print.  The
+  macro mechanisms used are near impossible to understand and causse
+  weird error messages and wrong error positions (in my gcc).  The
+  _Generic mechanism causes a ton of C code to be emitted for each
+  print call -- the compiler throws almost of it away, based on
+  argument type, but looking at the pre-processed code is
+  interesting. The number of arguments may be inconsistent with the
+  format string without compile time warning.
+
+- Q: I stack usage really low?
+
+  A: Kind of, but not as much as I'd like.  It's around 250 bytes
+  worst case on my x86-64.
+
+- Q: What about code size?
+
+  A: This generates more code at the call site, because each argument
+  is translated to another function call.  Also, the temporary objects
+  cause more stack to be used at the call site.  Interally, the library
+  is OK wrt. code size, I think.
+
+- Q: What about speed?
+
+  A: Really?  This is about printing messages -- probably short ones
+  (less than a few kB, I'd guess).  So while I did try not to mess up,
+  this is not optimised for speed.
+
+- Q: Is this safe than `printf`?
+
+  A: Definitely, I think.  There is absolutely no chance to give a
+  wrong format specifier and access the stack (like `printf` does via
+  `stdarg.h`) in undefined ways.  This is particularly true for
+  multi-arch development where with `printf` you need to be careful
+  about length specifiers, and you might not get a warning on your
+  machine, but the next person will and it will crash there.  I
+  usually need to compile for a few times on multiple architectures to
+  get the integer length correct, e.g., `%u` vs `%lu` vs. `%llu`
+  vs. `%zu`.
+
+  This library's mechanism is also more convenient, because you do not
+  need to think much about what you're printing to use the format
+  specifier, and there are no `PRId16` etc. macros that obfuscate your
+  portable code.  And you can use UTF-8, -16, -32 strings seamlessly
+  and mix them freely.  You can print into a malloced or stack
+  allocated compound literal safely, with error checking.
 
 ## TODO
 
