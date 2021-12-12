@@ -74,8 +74,8 @@ extern "C" {
 #define VA_OPT_PREC   0x0010
 /** '=' modifier */
 #define VA_OPT_EQUAL  0x0020
-/** reserved */
-#define VA_OPT_X6     0x0040
+/** internal: simulate printing */
+#define VA_OPT_SIM    0x0040
 /** reserved */
 #define VA_OPT_X7     0x0080
 

@@ -21,22 +21,19 @@ static char const *digit2_b32[2] = {
 /* ********************************************************************** */
 /* static functions */
 
-static void out_dec(va_stream_t *s, unsigned c)
+static void render(va_stream_t *s, unsigned c)
 {
     if (c == 0) {
         return;
     }
-    if (s->width > 0) {
-        s->width--;
+    if (s->opt & VA_OPT_SIM) {
+        if (s->width > 0) {
+            s->width--;
+        }
     }
-}
-
-static void out_putc(va_stream_t *s, unsigned c)
-{
-    if (c == 0) {
-        return;
+    else {
+        s->vtab->put(s, c);
     }
-    s->vtab->put(s, c);
 }
 
 static unsigned char va_quote_sh(unsigned c)
@@ -70,10 +67,9 @@ static unsigned char va_quote_c(unsigned c)
     }
 }
 
-static void render_quote_octal(
+static void render_quote_oct(
     va_stream_t *s,
-    unsigned c,
-    void (*render)(va_stream_t *, unsigned))
+    unsigned c)
 {
     render(s, '\\');
     render(s, '0' + ((c >> 6) & 7));
@@ -83,8 +79,7 @@ static void render_quote_octal(
 
 static void render_quote_unicode(
     va_stream_t *s,
-    unsigned c,
-    void (*render)(va_stream_t *, unsigned))
+    unsigned c)
 {
     char const * const digit = digit2_std[!!(s->opt & VA_OPT_UPPER)];
     render(s, '\\');
@@ -157,8 +152,7 @@ static unsigned iter_take(
 
 static void render_quotec(
     va_stream_t *s,
-    unsigned c,
-    void (*render)(va_stream_t *, unsigned))
+    unsigned c)
 {
     unsigned c2;
     switch (VA_BGET(s->opt, VA_OPT_QUOTE)) {
@@ -186,15 +180,15 @@ static void render_quotec(
         }
         if ((c < 0x20) || (c == 0x7f)) {
             if (VA_BGET(s->opt,VA_OPT_QUOTE) == VA_QUOTE_C) {
-                render_quote_octal(s, c, render);
+                render_quote_oct(s, c);
             }
             else {
-                render_quote_unicode(s, c, render);
+                render_quote_unicode(s, c);
             }
             return;
         }
         if (((s->opt & VA_OPT_ZERO) != 0) && (c >= 0x80)) {
-            render_quote_unicode(s, c, render);
+            render_quote_unicode(s, c);
             return;
         }
         break;
@@ -231,19 +225,19 @@ static va_stream_t *render_rawstr(va_stream_t *s, char const *start)
     /* space */
     if ((s->opt & VA_OPT_MINUS) == 0) {
         for (; s->width > 0; s->width--) {
-            out_putc(s, ' ');
+            render(s, ' ');
         }
     }
 
     /* meat */
     for(char const *cur = start; (*cur != 0); cur++) {
-        out_putc(s, (unsigned char)*cur);
+        render(s, (unsigned char)*cur);
     }
 
     /* space */
     if ((s->opt & VA_OPT_MINUS) != 0) {
         for (; s->width > 0; s->width--) {
-            out_putc(s, ' ');
+            render(s, ' ');
         }
     }
 
@@ -318,31 +312,33 @@ static va_stream_t *render_iter(va_stream_t *s, va_read_iter_t *iter)
     }
     else {
         s->width -= delim_len;
+        s->opt |= VA_OPT_SIM;
         iter_start(s,iter,start);
         while ((s->width > 0) && ((ch = iter_take(s,iter,end)) != 0)) {
-            render_quotec(s, ch, out_dec);
+            render_quotec(s, ch);
         }
+        VA_MCLR(s->opt, VA_OPT_SIM);
     }
 
     /* space */
     if ((s->opt & VA_OPT_MINUS) == 0) {
         for (; s->width > 0; s->width--) {
-            out_putc(s, ' ');
+            render(s, ' ');
         }
     }
 
     /* meat */
-    out_putc(s, prefix);
-    out_putc(s, delim);
+    render(s, prefix);
+    render(s, delim);
     for (iter_start(s,iter,start); (ch = iter_take(s,iter,end)) != 0;) {
-        render_quotec(s, ch, out_putc);
+        render_quotec(s, ch);
     }
-    out_putc(s, delim);
+    render(s, delim);
 
     /* space */
     if ((s->opt & VA_OPT_MINUS) != 0) {
         for (; s->width > 0; s->width--) {
-            out_putc(s, ' ');
+            render(s, ' ');
         }
     }
 
@@ -401,6 +397,7 @@ static va_stream_t *render_int(
             len++;
         }
     }
+
     size_t blen = len;
     if (len < s->prec) {
         len = s->prec;
@@ -416,29 +413,29 @@ static va_stream_t *render_int(
         len = s->width;
     }
 
-    size_t slen = (s->width > len) ? (s->width - len) : 0;
+    s->width = (s->width > len) ? (s->width - len) : 0;
 
     /* print */
     if ((s->opt & VA_OPT_MINUS) == 0) {
-        for (unsigned i = 0; i < slen; i++) {
-            out_putc(s, ' ');
+        for (; s->width > 0; s->width--) {
+            render(s, ' ');
         }
     }
     if ((len > blen) && prefix0) {
-        out_putc(s, prefix0);
+        render(s, prefix0);
         len--;
     }
     if ((len > blen) && prefix1) {
-        out_putc(s, prefix1);
+        render(s, prefix1);
         len--;
     }
     if ((len > blen) && prefix2) {
-        out_putc(s, prefix2);
+        render(s, prefix2);
         len--;
     }
 
     for (size_t i = blen; i < len; i++) {
-        out_putc(s, '0');
+        render(s, '0');
     }
 
     /* which set of digits? */
@@ -448,13 +445,13 @@ static va_stream_t *render_int(
     }
     char const *digit = digit2[!!(s->opt & VA_OPT_UPPER)];
     while (div > 0) {
-        out_putc(s, (unsigned char)digit[(x / div) % base]);
+        render(s, (unsigned char)digit[(x / div) % base]);
         div /= base;
     }
 
     if ((s->opt & VA_OPT_MINUS) != 0) {
-        for (unsigned i = 0; i < slen; i++) {
-            out_putc(s, ' ');
+        for (; s->width > 0; s->width--) {
+            render(s, ' ');
         }
     }
     return s;
@@ -786,7 +783,7 @@ static void va_xprintf_skip(va_stream_t *s)
                 return;
             }
         }
-        out_putc(s, ch);
+        render(s, ch);
         s->pat.cur = iter->cur;
     }
 }
@@ -860,14 +857,14 @@ extern va_stream_t *va_xprintf_iter(
     va_stream_t *s,
     va_read_iter_t *x)
 {
+    void const *start = x->cur;
     for(;;) {
-        va_read_iter_t xi = *x;
+        x->cur = start;
         if (va_xprintf_set_ast(s, 0)) {
-            render_iter(s, &xi);
+            render_iter(s, x);
             va_xprintf_skip(s);
         }
         if (!parse_format(s)) {
-            x->cur = xi.cur;
             return s;
         }
     }
