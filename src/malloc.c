@@ -16,7 +16,7 @@ extern void va_vec_init(
         return;
     }
 
-    t->data = t->reall(NULL, sizeof(*t->data) * t->size);
+    t->data = t->alloc(NULL, t->size, sizeof(*t->data));
     if (t->data == NULL) {
         va_stream_set_error(s, VA_E_TRUNC);
         t->pos = 0;
@@ -39,9 +39,9 @@ extern void va_vec_put(
 
     if ((t->pos + 1) >= t->size) {
         t->size *= 2;
-        char *new_data = t->reall(t->data, sizeof(*t->data) * t->size);
+        char *new_data = t->alloc(t->data, t->size, sizeof(*t->data));
         if (new_data == NULL) {
-            (void)t->reall(t->data, 0);
+            (void)t->alloc(t->data, 0, sizeof(*t->data));
             va_stream_set_error(s, VA_E_TRUNC);
             t->pos = 0;
             t->size = 0;

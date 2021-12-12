@@ -71,22 +71,22 @@ In the following, `Char` may be `char`, `char16_t`, or `char32_t`:
     #include <va_print/malloc.h>
 
     char *
-    va_mprintf(void *(*realloc)(void *, size_t), Char const *, ...)
+    va_mprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
 
     char16_t *
-    va_umprintf(void *(*realloc)(void *, size_t), Char const *, ...)
+    va_umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
 
     char32_t *
-    va_Umprintf(void *(*realloc)(void *, size_t), Char const *, ...)
+    va_Umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
 
     va_stream_vec_t
-    VA_STREAM_VEC(void *(*realloc)(void *, size_t));
+    VA_STREAM_VEC(void *(*alloc)(void *, size_t, size_t));
 
     va_stream_vec16_t
-    VA_STREAM_VEC16(void *(*realloc)(void *, size_t));
+    VA_STREAM_VEC16(void *(*alloc)(void *, size_t, size_t));
 
     va_stream_vec32_t
-    VA_STREAM_VEC32(void *(*realloc)(void *, size_t));
+    VA_STREAM_VEC32(void *(*alloc)(void *, size_t, size_t));
 
 
     #include <va_print/len.h>
@@ -737,13 +737,13 @@ use an UTF-32 format string:
     }
 
 This can also be done by creating a dynamically allocated string with
-realloc():
+`va_alloc()`, which uses the system's `realloc()` and `free()` internally:
 
     #include <va_print/malloc.h>
 
     FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
     {
-        char *fn = va_mprintf(realloc, "%a/%a%.a", dir, file, suffix);
+        char *fn = va_mprintf(va_alloc, "%a/%a%.a", dir, file, suffix);
         if (fn == NULL) {
             return NULL;
         }

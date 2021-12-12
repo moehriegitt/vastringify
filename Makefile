@@ -119,6 +119,7 @@ out/libvastringify.a: \
     out/malloc_utf8.o \
     out/malloc_utf16.o \
     out/malloc_utf32.o \
+    out/malloc_compat.o \
     out/file.o \
     out/file16be.o \
     out/file16le.o \

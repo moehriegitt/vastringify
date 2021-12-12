@@ -1,8 +1,8 @@
 /* -*- Mode: C -*- */
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 #include <stdlib.h>
 
 #include "va_print/core.h"
@@ -39,7 +39,7 @@ static void test_iuscp(
     size_t l2 = va_lprintf(f, a,b,c,d,e);
     assert(l1 == l2);
 
-    char *s3 = va_mprintf(realloc, f, a,b,c,d,e);
+    char *s3 = va_mprintf(va_alloc, f, a,b,c,d,e);
     assert(s3 != NULL);
     printf("%s;", s3);
     free(s3);
@@ -96,15 +96,15 @@ int main(void)
     char32_t *a2b = va_Unprintf(20, "test\u201c%qs", "\u201c");
     va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a2b, "\u201c");
 
-    char *a3 = va_mprintf(realloc, u"test\u201c%qs", "\u201c");
+    char *a3 = va_mprintf(va_alloc, u"test\u201c%qs", "\u201c");
     va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a3, "\u201c");
     free(a3);
 
-    char16_t *a4 = va_umprintf(realloc, "test\u201c%qs", "\u201c");
+    char16_t *a4 = va_umprintf(va_alloc, "test\u201c%qs", "\u201c");
     va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a4, "\u201c");
     free(a4);
 
-    char32_t *a4b = va_Umprintf(realloc, "test\u201c%qs", "\u201c");
+    char32_t *a4b = va_Umprintf(va_alloc, "test\u201c%qs", "\u201c");
     va_printf("%u;;%s;test\u201c%qs\n", __LINE__, a4b, "\u201c");
     free(a4b);
 
@@ -145,7 +145,7 @@ int main(void)
     printf("%u;;\ufeffh\uc0c0g\u201ch;%s;\n", __LINE__, "\ufeffh\uc0c0g\u201ch");
     char *s1 = va_nprintf(20, "%a","\ufeffh\uc0c0g\u201ch");
     printf("%u;;\ufeffh\uc0c0g\u201ch;%s;\n", __LINE__, s1);
-    char *s2 = va_mprintf(realloc, "%a", "\ufeffh\uc0c0g\u201ch");
+    char *s2 = va_mprintf(va_alloc, "%a", "\ufeffh\uc0c0g\u201ch");
     printf("%u;;\ufeffh\uc0c0g\u201ch;%s;\n", __LINE__, s2);
     free(s2);
     va_printf("%u;;\ufeffh\uc0c0g\u201ch;%a;\n", __LINE__, "\ufeffh\uc0c0g\u201ch");

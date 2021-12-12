@@ -70,7 +70,14 @@ extern "C" {
         va_mprintf_init_size, 0, (M) })
 
 /**
- * Prints into a newly allocated 'char*' buffer using the given realloc().
+ * Prints into a newly allocated 'char*' buffer using the given alloc()
+ * function.
+ *
+ * The function uses the passed alloc() function for initial allocation
+ * by passing a NULL pointer, for reallocation, and also for deallocation
+ * by passing nmemb==0, in case of an error.  Do not pass the system's
+ * 'realloc()' function directly, as it is not well-defined for the
+ * 'nmemb==0' case.
  *
  * This doubles the buffer as the string is printed until the string
  * completely fills the buffer.  This starts allocating with a 16 byte
@@ -79,10 +86,19 @@ extern "C" {
  * This returns the allocated string.
  *
  * If memory is exhausted while printing, then the string so far allocated
- * is deallocated using the given realloc() and then NULL is returned.
+ * is deallocated using the given 'alloc(p,0)' and then NULL is returned.
+ *
+ * Note: to prevent that you pass the system 'realloc()' function direction,
+ * the prototype of the function was made incompatible on purpose.
+ * Using realloc() directly is not possible with the current state of the C
+ * standard, because it is implementation defined how it works when nmemb==0:
+ * it may not deallocate the memory.  There is the va_alloc() function that
+ * uses the system 'realloc()' and 'free()' to implement the 'nmemb==0'
+ * deallocation.  If you pass own functions, be sure that they can
+ * allocate (ptr==NULL), reallocate, and deallocate (nmemb==0).
  */
-#define va_mprintf(M,...) \
-    VA_BLOCK_EXPR(va_xprintf(&VA_STREAM_VEC(M), __VA_ARGS__)->data)
+#define va_mprintf(alloc,...) \
+    VA_BLOCK_EXPR(va_xprintf(&VA_STREAM_VEC(alloc), __VA_ARGS__)->data)
 
 /**
  * Prints into a newly allocated 'char16_t*' buffer using the
@@ -124,7 +140,7 @@ typedef struct {
     char *data;
     size_t size;
     size_t pos;
-    void *(*reall)(void *, size_t);
+    void *(*alloc)(void *, size_t nmemb, size_t size);
 } va_stream_vec_t;
 
 typedef struct {
@@ -132,7 +148,7 @@ typedef struct {
     char16_t *data;
     size_t size;
     size_t pos;
-    void *(*reall)(void *, size_t);
+    void *(*alloc)(void *, size_t nmemb, size_t size);
 } va_stream_vec16_t;
 
 typedef struct {
@@ -140,7 +156,7 @@ typedef struct {
     char32_t *data;
     size_t size;
     size_t pos;
-    void *(*reall)(void *, size_t);
+    void *(*alloc)(void *, size_t nmemb, size_t size);
 } va_stream_vec32_t;
 
 /* ********************************************************************** */
@@ -166,6 +182,27 @@ extern void va_vec32_init(
 extern void va_vec32_put(
     va_stream_t *,
     char32_t);
+
+/**
+ * Allocate, reallocate, or deallocate.
+ *
+ * If nmemb==0 this uses free() to deallocate the memory returns NULL.
+ * Note that free() also allows data to be NULL in this case.
+ *
+ * If nmemb>0, this tries to allocate or reallocate a new piece of
+ * memory using realloc(), and returns the result.
+ *
+ * This asserts that size != 0: this parameter should come from a
+ * sizeof() operator.
+ *
+ * The string returned by vm_mprintf() when v_alloc() is used can be
+ * freed using 'free()'.  No need to use 'va_alloc()' for freeing
+ * (and thinking about the value of 'size').
+ */
+extern void *va_alloc(
+    void *data,
+    size_t nmemb,
+    size_t size);
 
 /* ********************************************************************** */
 /* epilogue */
