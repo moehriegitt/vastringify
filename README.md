@@ -548,7 +548,7 @@ Examples:
 - `va_printf("%#0qC", 0x201c)` prints `\u201C`.
 - `va_printf("%qa", (void*)18)` prints `0x12` (on normal machines)
 - `va_printf("%qa", 18)` prints `18`
-- `va_printf("%0qa", u"\xd801") prints `"\xfffd"`
+- `va_printf("%0qa", u"\xd801")` prints `"\xfffd"`
 
 ### Java/JSON quotation
 

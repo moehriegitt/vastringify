@@ -255,17 +255,8 @@ static void render_ptr(va_stream_t *s, void const *x)
     return;
 }
 
-static void render_iter(va_stream_t *s, va_read_iter_t *iter)
+static void render_iter_algo(va_stream_t *s, va_read_iter_t *iter)
 {
-    switch (VA_BGET(s->opt, VA_OPT_MODE)) {
-    case VA_MODE_TYPE:
-        render_rawstr(s, iter->vtab->type);
-        return;
-    case VA_MODE_PTR:
-        render_ptr(s, iter->cur);
-        return;
-    }
-
     if (iter->cur == NULL) {
         switch (VA_BGET(s->opt, VA_OPT_QUOTE)) {
         case VA_QUOTE_C: render_rawstr(s, "NULL"); return;
@@ -345,6 +336,20 @@ static void render_iter(va_stream_t *s, va_read_iter_t *iter)
             render(s, ' ');
         }
     }
+}
+
+static void render_iter(va_stream_t *s, va_read_iter_t *iter)
+{
+    switch (VA_BGET(s->opt, VA_OPT_MODE)) {
+    case VA_MODE_TYPE:
+        render_rawstr(s, iter->vtab->type);
+        return;
+    case VA_MODE_PTR:
+        render_ptr(s, iter->cur);
+        return;
+    }
+    render_iter_algo(s, iter);
+    return;
 }
 
 static void render_int(
@@ -516,7 +521,7 @@ static void render_char(
         [3] = &arr1_vtab_32,
         [7] = &arr1_vtab_32,
     };
-    render_iter(s, &VA_READ_ITER(vtab[(sz - 1) & 7], &x));
+    render_iter_algo(s, &VA_READ_ITER(vtab[(sz - 1) & 7], &x));
 }
 
 static void render_ull(va_stream_t *s, unsigned long long x, unsigned sz)
