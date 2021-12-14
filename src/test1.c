@@ -224,6 +224,9 @@ int main(void)
     PRINTF2("\\u201c", "%#0qc", 0x201c);
     PRINTF2("\\u201C", "%#0qC", 0x201c);
 
+    PRINTF2("\"foo\\n\"", "%qs", "foo\n");
+    PRINTF2("foo\\n", "%#qs", "foo\n");
+
     PRINTF2("\"foo\\'bar\"", "%Qs", "foo'bar");
     PRINTF2("'\\n'", "%Qc", 10);
     PRINTF2("\\u0010", "%#Qc", 16);
@@ -308,6 +311,7 @@ int main(void)
     PRINTF2("\"foo\"::char*", "%qs::%=t", "foo", &e);
     PRINTF2("\"foo\"::char16_t*", "%qs::%=t", u"foo", &e);
     PRINTF2("\"foo\"::char32_t*", "%qs::%=t", U"foo", &e);
+    PRINTF2("\"foo\"::char32_t*", "%qv::%=t", U"foo", &e);
 
     PRINTF2("int32_t", "%t", 10);
     PRINTF2("int16_t", "%t", (short)10);

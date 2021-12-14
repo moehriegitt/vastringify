@@ -16,7 +16,7 @@ using different format specifiers or print function names.
 
 This liberates you from thinking about `%u` vs. `%lu` vs. `%llu`
 vs. `%zu`, even in portable code with different integer types: the
-compiler choses the right function to call for your parameter, and
+compiler chooses the right function to call for your parameter, and
 they all print fine with `%u`.  (Even strings will print fine with
 `%u`.)
 
@@ -256,7 +256,9 @@ The following conversion letters are recognised:
    printing (including pointers).
 
  - `u` is equivalent to `zd`, i.e., prints a signed integer as
-   unsigned in decimal notation.
+   unsigned in decimal notation.  This implicitly sets the `z`
+   option, which also affects quoted string printing, so `%qu`
+   prints strings like `%qzv`.
 
  - `x` or `X` selects hexadecimal integer notation for numeric
    printing (including pointers).  `x` uses lower case digits,
@@ -376,7 +378,7 @@ principle be used and passed through the library.
 
 The only place the core library uses Unicode interpretation is when
 quoting C or JSON strings for codepoints >0x80 (e.g., when formatting
-with `%0qs`), and if a decoding error is encountered or if the value
+with `%0qv`), and if a decoding error is encountered or if the value
 is not valid Unicode, then it uses \ufffd to show this, because the
 quotation using \u or \U would otherwise be a lie.
 
@@ -544,7 +546,8 @@ These are suffixed to find the vtab object for writing:
 Examples:
 
 - `va_printf("%qs", "foo'bar")` prints `"foo\'bar"`.
-- `va_printf("%qzs", u"foo'bar")` prints `u"foo\'bar"`.
+- `va_printf("%qv", "foo'bar")` prints `"foo\'bar"`.
+- `va_printf("%qzv", u"foo'bar")` prints `u"foo\'bar"`.
 - `va_printf("%qc", 10)` prints `'\n'`.
 - `va_printf("%qzc", 10)` prints `U'\n'`
 - `va_printf("%#qc", 16)` prints `\020`.
@@ -680,7 +683,7 @@ Examples:
   fact, it would probably make the whole point of this library
   infeasible.  There is the extended `=` option for at least printing
   the same value multiple times, so `%d %=#x` prints the same value
-  decimal and hexadecimal, and `%qs %=p` prints a string in C quotation
+  decimal and hexadecimal, and `%qv %=p` prints a string in C quotation
   and its pointer value.
 
 - no floats, because support would be too large for a small library.
