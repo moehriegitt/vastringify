@@ -321,6 +321,9 @@ int main(void)
     PRINTF2("\"\\n\"", "%qzs", "\n");
     PRINTF2("u\"\\n\"", "%qzs", u"\n");
     PRINTF2("U\"\\n\"", "%qzs", U"\n");
+    PRINTF2("\"\\n\"", "%qu", "\n");
+    PRINTF2("u\"\\n\"", "%qu", u"\n");
+    PRINTF2("U\"\\n\"", "%qu", U"\n");
     PRINTF2("'\\n'", "%qzc", (char)10);
     PRINTF2("u'\\n'", "%qzc", (short)10);
     PRINTF2("U'\\n'", "%qzc", 10);
@@ -405,6 +408,9 @@ int main(void)
     PRINTF2("   \"abc\",", "%8qzv,", "abc");
     PRINTF2("  u\"abc\",", "%8qzv,", u"abc");
     PRINTF2("  U\"abc\",", "%8qzv,", U"abc");
+    PRINTF2("   \"abc\",", "%8qu,", "abc");
+    PRINTF2("  u\"abc\",", "%8qu,", u"abc");
+    PRINTF2("  U\"abc\",", "%8qu,", U"abc");
 
     PRINTF2("     \'A\',", "%8qzc,", (char)65);
     PRINTF2("    u\'A\',", "%8qzc,", (short)65);
