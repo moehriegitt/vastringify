@@ -15,14 +15,18 @@ output strings, without manual string format conversions, and without
 using different format specifiers or print function names.
 
 This liberates you from thinking about `%u` vs. `%lu` vs. `%llu`
-vs. `%zu`, even in portable code with different integer types.
+vs. `%zu`, even in portable code with different integer types: the
+compiler choses the right function to call for your parameter, and
+they all print fine with `%u`.  (Even strings will print fine with
+`%u`.)
 
 'Type-safe' in this context does not mean that you get more compile
 errors, but that the format specifier does not need to specify the
 argument type, but just defines the print format.  In fact, format
 strings with this library will have less compile-time checking (namely
 none) than with modern compilers for standard `printf`.  This approach
-is still safer.
+is still safer: with this library, you just cannot pass the wrong
+size parameter and crash.
 
 ## Compatibility
 
