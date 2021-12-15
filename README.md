@@ -38,7 +38,7 @@ because `...` is avoided.
  - `va_lprintf("~p", 65)` returns `4`, the length of `0x41`
  - `va_nprintf(10, "~p", 65)` returns `"0x41"`, the pointer to a compound
    literal `(char[10]){}` that was printed into
- - `va_printf("%t x = %=qzs", u"fo\020o")` prints `char16_t* x = u"fo\no"`
+ - `va_printf("~t x = ~=qzs", u"fo\020o")` prints `char16_t* x = u"fo\no"`
 
 ## Compatibility
 
