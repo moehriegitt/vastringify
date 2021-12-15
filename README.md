@@ -15,18 +15,18 @@ output strings, without manual string format conversions, and without
 using different format specifiers or print function names.
 
 This liberates you from thinking about `%u` vs. `%lu` vs. `%llu`
-vs. `%zu`, even in portable code with different integer types: the
-compiler chooses the right function to call for your parameter.  With
-this library, they all print fine with `~s`, like also strings and
+vs. `%zu`, even in portable code with different integer types. .  With
+this library, the compiler chooses the right function for your
+parameter and they all print fine with `~s`, like also strings and
 pointers do.
 
 'Type-safe' in this context does not mean that you get more compile
-errors, but that the format specifier does not need to specify the
-argument type, but just defines the print format.  In fact, format
-strings with this library will have less compile-time checking (namely
-none) than with modern compilers for standard `printf`.  This approach
-is still safer: with this library, you just cannot pass the wrong
-size parameter and crash, because `...` is avoided.
+errors or warnings, but that you cannot make a mistake, and you do not
+need the format string to specify the argument type.  Format strings
+with this library do not need compile-time checking to be safe,
+because the compiler chooses the right formatting function for each
+parameter.  You cannot pass the wrong size parameter and crash,
+because `...` is avoided.
 
 ## Examples
 
@@ -38,6 +38,7 @@ size parameter and crash, because `...` is avoided.
  - `va_lprintf("~p", 65)` returns `4`, the length of `0x41`
  - `va_nprintf(10, "~p", 65)` returns `"0x41"`, the pointer to a compound
    literal `(char[10]){}` that was printed into
+ - `va_printf("%t x = %qzs", u"fo\020o")` prints `char16_t* x = u"fo\no"`
 
 ## Compatibility
 

@@ -305,21 +305,15 @@ static void render_iter_algo(va_stream_t *s, va_read_iter_t *iter)
 
     /* reinterpret 'width' into how many spaces are written */
     if ((s->opt & VA_OPT_MINUS) == 0) {
-        if (s->width <= (delim & 0xff)) {
-            s->width = 0;
+        s->opt |= VA_OPT_SIM;
+        iter_start(s,iter,start);
+        while ((s->width > (delim & 0xff)) && ((ch = iter_take(s,iter,end)) != 0)) {
+            render_quotec(s, ch);
         }
-        else {
-            s->width -= (delim & 0xff);
-            s->opt |= VA_OPT_SIM;
-            iter_start(s,iter,start);
-            while ((s->width > 0) && ((ch = iter_take(s,iter,end)) != 0)) {
-                render_quotec(s, ch);
-            }
-            VA_MCLR(s->opt, VA_OPT_SIM);
-        }
+        VA_MCLR(s->opt, VA_OPT_SIM);
 
         /* space */
-        while (s->width > 0) {
+        while (s->width > (delim & 0xff)) {
             render(s, ' ');
         }
     }
@@ -634,15 +628,15 @@ again:;
 
         /* print part between format specifiers */
         for (;;) {
+            if (c == 0) {
+                return 0;
+            }
             if (c == VA_SIGIL) {
                 c = iter_take_pat(s, iter);
                 break;
             }
             render(s, c);
             c = iter_take_pat(s, iter);
-            if (c == 0) {
-                return 0;
-            }
         }
 
         /* assume default width */

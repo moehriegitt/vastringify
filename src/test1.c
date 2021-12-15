@@ -447,7 +447,10 @@ int main(void)
     PRINTF2("uint64_t   x =     U\'c\',", "~-10t x = ~=8qzc,", (unsigned long long)'c');
 
     PRINTF2("\"\\ufffd\"", "~0qa", u"\xd801");
+
     PRINTF2("a\ufffcb7c", "a~jb~sc", 6, 7);
+    PRINTF2("a\ufffcb7c", "a~jb~sc", "6", 7);
+    PRINTF2("a\ufffcb7c", "a~jb~sc", NULL, 7);
 
     PRINTF2("a~b7", "a~~b~s", 7);
     PRINTF2("a~~~~b7", "a~4~b~s", 7);
