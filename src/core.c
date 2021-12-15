@@ -630,7 +630,7 @@ static bool parse_format(va_stream_t *s)
         s->width = 0;
         s->prec = 1;
         s->opt &= VA_OPT_RESET;
-        if (c != '%') {
+        if (c != '~') {
             return 0;
         }
 
@@ -786,9 +786,9 @@ static void va_xprintf_skip(va_stream_t *s)
 
     unsigned ch;
     while ((ch = iter_take(s, iter, NULL)) != 0) {
-        if (ch == '%') {
+        if (ch == '~') {
             ch = iter_take(s, iter, NULL);
-            if (ch != '%') {
+            if (ch != '~') {
                 return;
             }
         }
@@ -857,7 +857,7 @@ extern va_stream_t *va_xprintf_init(
     /* prefix part of the format string */
     va_xprintf_skip(s);
 
-    /* first % format */
+    /* first ~ format */
     parse_format(s);
     return s;
 }

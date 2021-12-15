@@ -16,9 +16,9 @@ using different format specifiers or print function names.
 
 This liberates you from thinking about `%u` vs. `%lu` vs. `%llu`
 vs. `%zu`, even in portable code with different integer types: the
-compiler chooses the right function to call for your parameter, and
-they all print fine with `%u`.  (Even strings will print fine with
-`%u`.)
+compiler chooses the right function to call for your parameter.  With
+this library, they all print fine with `~v`.  Even strings print fine
+with `~v`.
 
 'Type-safe' in this context does not mean that you get more compile
 errors, but that the format specifier does not need to specify the
@@ -30,13 +30,13 @@ size parameter and crash.
 
 ## Examples
 
- - `va_printf("%s %s %s", 65, (long long)65, "65")` prints `65 65 65`
- - `va_printf("%c %c %c", 65, (long long)65, "65")` prints `A A 65`
- - `va_printf("%x %x %x", 65, (long long)65, "65")` prints `41 41 65`
- - `va_printf("%p %p %p", 65, (long long)65, "65")` prints
+ - `va_printf("~s ~s ~s", 65, (long long)65, "65")` prints `65 65 65`
+ - `va_printf("~c ~c ~c", 65, (long long)65, "65")` prints `A A 65`
+ - `va_printf("~x ~x ~x", 65, (long long)65, "65")` prints `41 41 65`
+ - `va_printf("~p ~p ~p", 65, (long long)65, "65")` prints
    `0x41 0x41 0x8838abc3932` (the pointer value of the string)
- - `va_lprintf("%p", 65)` returns `4`, the length of `0x41`
- - `va_nprintf(10, "%p", 65)` returns `"0x41"`, the pointer to a compound
+ - `va_lprintf("~p", 65)` returns `4`, the length of `0x41`
+ - `va_nprintf(10, "~p", 65)` returns `"0x41"`, the pointer to a compound
    literal `(char[10]){}` that was printed into
 
 ## Compatibility
@@ -157,12 +157,12 @@ wrong format specifier.
 
 The format specifiers in this printing mechanism serve to define which
 output format should be used, as they are not needed for type
-information.  The format specifier "%v" can be used as a generic
+information.  The format specifier "~v" can be used as a generic
 'default' output format.
 
 ### Format Specifiers
 
-Like in C, a format specifier begins with '%' followed by:
+A format specifier begins with `~`, and what follows is similar to C:
 
  - a list of flag characters
  - a width specifier
@@ -229,15 +229,15 @@ The following integer mask and quotation specifiers are recognised:
 
  - `h` applies the mask `0xffff` to an integer, then zero extends unsigned
    values, or sign extends signed values.
-   E.g., `va_printf("%#hx",0xabcdef)` prints `-0x3211`.
+   E.g., `va_printf("~#hx",0xabcdef)` prints `-0x3211`.
 
  - `hh` applies the mask `0xff` to an integer, then zero extends unsigned
    values, or sign extends signed values.
-   E.g., `va_printf("%hhX",0xabcdU)` prints `CD`.
+   E.g., `va_printf("~hhX",0xabcdU)` prints `CD`.
 
  - `z` reinterprets a signed integer as unsigned (mnemonic: zero
    extension).  `z` is implicit in formats `u` (and `U`).
-   E.g., `va_printf("%hhu", -1)` prints `255`.
+   E.g., `va_printf("~hhu", -1)` prints `255`.
 
  - `q` selects C quotation for strings and char format.  There is a
    separate section below to explain this.
@@ -268,13 +268,13 @@ The following conversion letters are recognised:
 
  - `u` is equivalent to `zd`, i.e., prints a signed integer as
    unsigned in decimal notation.  This implicitly sets the `z`
-   option, which also affects quoted string printing, so `%qu`
-   prints strings like `%qzv`.
+   option, which also affects quoted string printing, so `~qu`
+   prints strings like `~qzv`.
 
  - `x` or `X` selects hexadecimal integer notation for numeric
    printing (including pointers).  `x` uses lower case digits,
    `X` upper case.  Note that this also prints signed numbers with
-   a `-` if appropriate: `va_printf("%#x", -5)` prints `-0x5`.
+   a `-` if appropriate: `va_printf("~#x", -5)` prints `-0x5`.
    There's the `z` flag to print signed integers as unsigned.
 
  - `b` or `B` selects binary integer notation for numeric
@@ -288,7 +288,7 @@ The following conversion letters are recognised:
 
  - `p` prints like `#x`, and for any pointer, including strings,
    prints the pointer value instead of the contents.  Note that
-   it also prints signed numbers: `va_print("%p",-5)` prints `-0x5`.
+   it also prints signed numbers: `va_print("~p",-5)` prints `-0x5`.
 
  - `P` is just like `p`, but with upper case hexadecial digits.
 
@@ -303,7 +303,7 @@ The following conversion letters are recognised:
  - `t` prints the argument type before modifications, in C
    syntax: `int8_`..`int64_t`, `uint8_t`..`uint64_t`, `char*`,
    `char16_t*`, `char32_t*`, `void*`.  Note that `va_error_t*`
-   arguments never print, and never consume a `%` format, but
+   arguments never print, and never consume a `~` format, but
    always just return the stream error.
 
  - any letter not mentioned above or any combination of letter and
@@ -376,7 +376,7 @@ The following function parameter types are recognised:
    documented here.
 
  - anything else: is tried to be converted to a pointer and
-   printed in hexadecimal encoding by default, i.e., in `%x`
+   printed in hexadecimal encoding by default, i.e., in `~x`
    format.
 
 ## Unicode
@@ -389,7 +389,7 @@ principle be used and passed through the library.
 
 The only place the core library uses Unicode interpretation is when
 quoting C or JSON strings for codepoints >0x80 (e.g., when formatting
-with `%0qv`), and if a decoding error is encountered or if the value
+with `~0qv`), and if a decoding error is encountered or if the value
 is not valid Unicode, then it uses \ufffd to show this, because the
 quotation using \u or \U would otherwise be a lie.
 
@@ -402,15 +402,15 @@ constraints are met, like excluding anything above 0x10FFFF and high
 and low UTF-16 surrogates, and detecting decoding errors according to
 the Unicode recommendations and best practices.  The encoder/decoder
 pairs usually try to pass through faulty sequences as is, if possible,
-e.g., reading ISO-8859-1 data from an UTF-8 `%s` and printing it into
+e.g., reading ISO-8859-1 data from an UTF-8 `~s` and printing it into
 an UTF-8 output stream preserves the original ISO-8859-1 byte
 sequence, although the intermediate steps do raise 'illegal sequence'
 errors.
 
 Integers print without Unicode checks, i.e., if an integer is printed
-as a character using `%c`, then the lower 24 bits is passed down to
+as a character using `~c`, then the lower 24 bits is passed down to
 the output stream encoder as is.  If integers larger than 0xffffff are
-tried to be printed with `%c`, this results in a decoding error, and
+tried to be printed with `~c`, this results in a decoding error, and
 only the lower 24 bits are used.
 
 ## Encodings
@@ -556,17 +556,17 @@ These are suffixed to find the vtab object for writing:
 
 Examples:
 
-- `va_printf("%qs", "foo'bar")` prints `"foo\'bar"`.
-- `va_printf("%qv", "foo'bar")` prints `"foo\'bar"`.
-- `va_printf("%qzv", u"foo'bar")` prints `u"foo\'bar"`.
-- `va_printf("%qc", 10)` prints `'\n'`.
-- `va_printf("%qzc", 10)` prints `U'\n'`
-- `va_printf("%#qc", 16)` prints `\020`.
-- `va_printf("%#0qc", 0x201c)` prints `\u201c`.
-- `va_printf("%#0qC", 0x201c)` prints `\u201C`.
-- `va_printf("%qa", (void*)18)` prints `0x12` (on normal machines)
-- `va_printf("%qa", 18)` prints `18`
-- `va_printf("%0qa", u"\xd801")` prints `"\xfffd"`
+- `va_printf("~qs", "foo'bar")` prints `"foo\'bar"`.
+- `va_printf("~qv", "foo'bar")` prints `"foo\'bar"`.
+- `va_printf("~qzv", u"foo'bar")` prints `u"foo\'bar"`.
+- `va_printf("~qc", 10)` prints `'\n'`.
+- `va_printf("~qzc", 10)` prints `U'\n'`
+- `va_printf("~#qc", 16)` prints `\020`.
+- `va_printf("~#0qc", 0x201c)` prints `\u201c`.
+- `va_printf("~#0qC", 0x201c)` prints `\u201C`.
+- `va_printf("~qa", (void*)18)` prints `0x12` (on normal machines)
+- `va_printf("~qa", 18)` prints `18`
+- `va_printf("~0qa", u"\xd801")` prints `"\xfffd"`
 
 ### Java/JSON quotation
 
@@ -578,13 +578,13 @@ Examples:
 
 Examples:
 
-- `va_printf("%Qs", "foo'bar")` prints `"foo\'bar"`.
-- `va_printf("%Qc", 10)` prints `'\n'`.
-- `va_printf("%#Qc", 16)` prints `\u0010`.
-- `va_printf("%#0Qc", 0x201c)` prints `\u201c`.
-- `va_printf("%#0QC", 0x201c)` prints `\u201C`.
-- `va_printf("%Qa", (void*)18)` prints `0x12` (on normal machines)
-- `va_printf("%Qa", 18)` prints `18`
+- `va_printf("~Qs", "foo'bar")` prints `"foo\'bar"`.
+- `va_printf("~Qc", 10)` prints `'\n'`.
+- `va_printf("~#Qc", 16)` prints `\u0010`.
+- `va_printf("~#0Qc", 0x201c)` prints `\u201c`.
+- `va_printf("~#0QC", 0x201c)` prints `\u201C`.
+- `va_printf("~Qa", (void*)18)` prints `0x12` (on normal machines)
+- `va_printf("~Qa", 18)` prints `18`
 
 ### Bourne Shell quotation
 
@@ -606,26 +606,26 @@ Examples:
 
 Examples:
 
-- `va_printf("%ks", "ab")` prints `ab`.
-- `va_printf("%ks", "a b")` prints `'a b'`.
-- `va_printf("%ks", "a'b")` prints `'a'\''b'`.
-- `va_printf("%#ks", "a'b")` prints `a'\''b`.
-- `va_printf("%ka", (void*)18)` prints `0x12` (on normal machines)
-- `va_printf("%ka", 18)` prints `18`
+- `va_printf("~ks", "ab")` prints `ab`.
+- `va_printf("~ks", "a b")` prints `'a b'`.
+- `va_printf("~ks", "a'b")` prints `'a'\''b'`.
+- `va_printf("~#ks", "a'b")` prints `a'\''b`.
+- `va_printf("~ka", (void*)18)` prints `0x12` (on normal machines)
+- `va_printf("~ka", 18)` prints `18`
 
 ## Extensions
 
-- This is type-safe, i.e., printing an int using "%s" will not
+- This is type-safe, i.e., printing an int using "~s" will not
   crash, but just print the integer.
 
-- `%b` and `%B` print binary, with optional `0b` or `0B` prefix.
+- `~b` and `~B` print binary, with optional `0b` or `0B` prefix.
 
-- `%e` and `%E` print integers in Base32, with optional `0e` or `0E`
+- `~e` and `~E` print integers in Base32, with optional `0e` or `0E`
   prefix.  This could be handy for writing error codes: 0eINVAL,
   0eAGAIN, 0eIO, ...
 
 - any meaningless format specifier (=letter) defaults to 'print in
-  natural default form'.  It is recommended to use `%v` for default
+  natural default form'.  It is recommended to use `~v` for default
   format printing of anything.
 
 - The `=` modifier prints the last value again, possibly with a
@@ -643,14 +643,14 @@ Examples:
 - This library assumes that text is printed, not binary, so it will never
   print '\0'.
 
-- The `%x` specifier also prints negative signed numbers, again, due
+- The `~x` specifier also prints negative signed numbers, again, due
   to type-safety.  Reinterpreting them as unsigned can be done with
   the `z` flag.
 
 - The format specifiers are not needed to prevent the program from
   crashing, because the information about the type that is passed is
   not needed.  The format really only specifies 'print like ...', so
-  by default it is recommended to just print with `%v`.
+  by default it is recommended to just print with `~v`.
 
 - Due to the type-safety, most length modifiers are not supported nor
   needed.  See `h`, `hh`, and `z` modifiers.
@@ -665,7 +665,7 @@ Examples:
   includes all characters needed for quotation.
 
 - If no format specifier is found, values are printed at the end of
-  the format string in default notation (as if printed with %v).
+  the format string in default notation (as if printed with ~v).
 
 ## Restrictions
 
@@ -693,8 +693,8 @@ Examples:
   make the code much more complex and stack usage infeasible.  In
   fact, it would probably make the whole point of this library
   infeasible.  There is the extended `=` option for at least printing
-  the same value multiple times, so `%d %=#x` prints the same value
-  decimal and hexadecimal, and `%qv %=p` prints a string in C quotation
+  the same value multiple times, so `~d ~=#x` prints the same value
+  decimal and hexadecimal, and `~qv ~=p` prints a string in C quotation
   and its pointer value.
 
 - no floats, because support would be too large for a small library.
@@ -712,11 +712,11 @@ Examples:
 - `'...'` literals have type `int` in C, so values >0x7f, with its
   highest bit set, will be misinterpreted as illegal Unicode on
   compilers where `char` is signed.  On my compiler, printing
-  `"%c",'\xfe'` prints a replacement characters, because `\xfe` equals
+  `"~c",'\xfe'` prints a replacement characters, because `\xfe` equals
   `(int)0xfffffffe`, which is not valid Unicode, and this library
   has no chance to find out that this is in fact `(char)0xfe`.  So
   printing `'...'` literals is unfortunately broken, without a fix.
-  Printing with `%hhc` works as expected (but `%zc` does not,
+  Printing with `~hhc` works as expected (but `~zc` does not,
   because, `\xfe` is an `int`).  Printing `(char)'\xfe'` also works,
   but is more ugly in my opinion (I do not like casts much).
 
@@ -793,6 +793,18 @@ Examples:
   and mix them freely.  You can print into a malloced or stack
   allocated compound literal safely, with error checking.
 
+- Q: Why do you use `~s` and not `%s`?
+
+  A1: This did use `%s` at the beginning.  But the format strings must
+  not be be confused with the standard C `printf`.  The formats and
+  argument lists are is not compatible with a `printf` call, and this
+  is not a drop-in replacement, so not getting confused is important.
+  E.g., in a larger code base, both styles might be used, maybe a
+  transition period, or just because, so programmers may see both
+  styles.  With the different sigil, it is immediately clear which
+  format is used when editing code, and confusion is hopefully
+  avoided.
+
 ## TODO
 
 - ISO-8859-1 (because why not)
@@ -805,7 +817,7 @@ Open a file with computed name, up to a fixed path length:
 
     FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
     {
-        return fopen(va_nprintf(80, "%v/%v%.v", dir, file, suffix), "rt");
+        return fopen(va_nprintf(80, "~v/~v~.v", dir, file, suffix), "rt");
     }
 
 The same with error checking about truncated string or en- or decoding
@@ -815,7 +827,7 @@ errors:
         char const *dir, char const *file, unsigned suffix)
     {
         va_error_t e;
-        char *fn = va_nprintf(80, "%v/%v%.v", dir, file, suffix, &e);
+        char *fn = va_nprintf(80, "~v/~v~.v", dir, file, suffix, &e);
         if (e.code != VA_E_OK) {
             return NULL;
         }
@@ -832,7 +844,7 @@ use an UTF-32 format string:
         char16_t const *dir, char16_t const *file, unsigned suffix)
     {
         va_error_t e;
-        char *fn = va_nprintf(80, U"%v/%v%.v", dir, file, suffix, &e);
+        char *fn = va_nprintf(80, U"~v/~v~.v", dir, file, suffix, &e);
         if (e.code != VA_E_OK) {
             return NULL;
         }
@@ -846,7 +858,7 @@ This can also be done by creating a dynamically allocated string with
 
     FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
     {
-        char *fn = va_mprintf(va_alloc, "%v/%v%.v", dir, file, suffix);
+        char *fn = va_mprintf(va_alloc, "~v/~v~.v", dir, file, suffix);
         if (fn == NULL) {
             return NULL;
         }
@@ -862,8 +874,8 @@ using va_lprintf():
 
     FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
     {
-        char n[va_lprintf("%v/%v%.v", dir, file, suffix)];
-        return fopen(va_szprintf(n, "%v/%v%.v", dir, file, suffix), "rt");
+        char n[va_lprintf("~v/~v~.v", dir, file, suffix)];
+        return fopen(va_szprintf(n, "~v/~v~.v", dir, file, suffix), "rt");
     }
 
 ## How Does This Work?
