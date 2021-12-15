@@ -794,28 +794,28 @@ Examples:
   multi-arch development where with `printf` you need to be careful
   about length specifiers, and you might not get a warning on your
   machine, but the next person will and it will crash there.  I
-  usually need to compile for a few times on multiple architectures to
-  get the integer length correct, e.g., `%u` vs `%lu` vs. `%llu`
+  usually need to compile a few times on multiple architectures to
+  get the integer length right, e.g., `%u` vs `%lu` vs. `%llu`
   vs. `%zu`.
 
   This library's mechanism is also more convenient, because you do not
-  need to think much about what you're printing to use the format
-  specifier, and there are no `PRId16` etc. macros that obfuscate your
+  need to think much about what you're printing with what format
+  specifier, and there are no `PRId16` macros that obfuscate your
   portable code.  And you can use UTF-8, -16, -32 strings seamlessly
   and mix them freely.  You can print into a malloced or stack
-  allocated compound literal safely, with error checking.
+  allocated compound literal safely, with error checking (end of
+  string, out of memory, etc.) and guaranteed NUL termination.
 
 - Q: Why do you use `~s` and not `%s`?
 
   A1: This did use `%s` at the beginning.  But the format strings must
-  not be be confused with the standard C `printf`.  The formats and
-  argument lists are is not compatible with a `printf` call, and this
-  is not a drop-in replacement, so not getting confused is important.
-  E.g., in a larger code base, both styles might be used, maybe a
-  transition period, or just because, so programmers may see both
-  styles.  With the different sigil, it is immediately clear which
-  format is used when editing code, and confusion is hopefully
-  avoided.
+  not be be confused with the standard C `printf`.  The format is not
+  compatible with a `printf` call, and this is not a drop-in
+  replacement.  E.g., in a larger code base, both this and old
+  `printf` might be mixed, maybe during a transition period, or just
+  because.  So programmers may see both styles.  With the different
+  sigil, it is immediately clear which format is used in a print call
+  when editing code, and confusion can hopefully be avoided.
 
 ## TODO
 
