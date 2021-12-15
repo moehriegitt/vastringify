@@ -86,7 +86,7 @@ int main(void)
     va_printf(u"~u;;~c;\u201c\n", __LINE__, 0x201c);
     va_printf(U"~u;;~c;\u201c\n", __LINE__, 0x201c);
     va_printf(u"~u;;~a;\u201c\n", __LINE__, "\u201c");
-    va_printf(u"~u;;~v;\u201c\n", __LINE__, "\u201c");
+    va_printf(u"~u;;~s;\u201c\n", __LINE__, "\u201c");
     va_printf(u"~u;;~a;\u201c\n", __LINE__, u"\u201c");
     va_printf(U"~u;;~a;\u201c\n", __LINE__, u"\u201c");
     va_printf(U"~u;;~a;\u201c\n", __LINE__, "\u201c");
@@ -317,7 +317,7 @@ int main(void)
     PRINTF2("\"foo\"::char*", "~qs::~=t", "foo", &e);
     PRINTF2("\"foo\"::char16_t*", "~qs::~=t", u"foo", &e);
     PRINTF2("\"foo\"::char32_t*", "~qs::~=t", U"foo", &e);
-    PRINTF2("\"foo\"::char32_t*", "~qv::~=t", U"foo", &e);
+    PRINTF2("\"foo\"::char32_t*", "~qa::~=t", U"foo", &e);
 
     PRINTF2("int32_t", "~t", 10);
     PRINTF2("int16_t", "~t", (short)10);
@@ -415,9 +415,9 @@ int main(void)
     PRINTF2("u\"j\"a", "~-4.2qzsa", u"j");
     PRINTF2("\"j\" a", "~-4.2Qzsa", U"j");
 
-    PRINTF2("   \"abc\",", "~8qzv,", "abc");
-    PRINTF2("  u\"abc\",", "~8qzv,", u"abc");
-    PRINTF2("  U\"abc\",", "~8qzv,", U"abc");
+    PRINTF2("   \"abc\",", "~8qzs,", "abc");
+    PRINTF2("  u\"abc\",", "~8qzs,", u"abc");
+    PRINTF2("  U\"abc\",", "~8qzs,", U"abc");
     PRINTF2("   \"abc\",", "~8qu,", "abc");
     PRINTF2("  u\"abc\",", "~8qu,", u"abc");
     PRINTF2("  U\"abc\",", "~8qu,", U"abc");
@@ -433,10 +433,10 @@ int main(void)
     PRINTF2("    U\'A\',", "~8qzc,", (unsigned long)65);
     PRINTF2("    U\'A\',", "~8qzc,", (unsigned long long)65);
 
-    PRINTF2("char32_t*  x =     U\"j\",", "~-10t x = ~=8qzv,", U"j");
-    PRINTF2("char16_t*  x =     u\"j\",", "~-10t x = ~=8qzv,", u"j");
-    PRINTF2("char*      x =      abc,", "~-10t x = ~=8zv,", "abc");
-    PRINTF2("char*      x =    \"abc\",", "~-10t x = ~=8qzv,", "abc");
+    PRINTF2("char32_t*  x =     U\"j\",", "~-10t x = ~=8qzs,", U"j");
+    PRINTF2("char16_t*  x =     u\"j\",", "~-10t x = ~=8qzs,", u"j");
+    PRINTF2("char*      x =      abc,", "~-10t x = ~=8zs,", "abc");
+    PRINTF2("char*      x =    \"abc\",", "~-10t x = ~=8qzs,", "abc");
     PRINTF2("int8_t     x =      \'c\',", "~-10t x = ~=8qzc,", (signed char)'c');
     PRINTF2("int16_t    x =     u\'c\',", "~-10t x = ~=8qzc,", (short)'c');
     PRINTF2("int32_t    x =     U\'c\',", "~-10t x = ~=8qzc,", (int)'c');

@@ -7,6 +7,12 @@
 #include "va_print/impl.h"
 
 /* ********************************************************************** */
+/* sigil to use in format strings */
+#ifndef VA_SIGIL
+#define VA_SIGIL '~'
+#endif
+
+/* ********************************************************************** */
 /* static object definitions */
 
 static char const *digit2_std[2] = {
@@ -630,7 +636,7 @@ static bool parse_format(va_stream_t *s)
         s->width = 0;
         s->prec = 1;
         s->opt &= VA_OPT_RESET;
-        if (c != '~') {
+        if (c != VA_SIGIL) {
             return 0;
         }
 
@@ -786,9 +792,9 @@ static void va_xprintf_skip(va_stream_t *s)
 
     unsigned ch;
     while ((ch = iter_take(s, iter, NULL)) != 0) {
-        if (ch == '~') {
+        if (ch == VA_SIGIL) {
             ch = iter_take(s, iter, NULL);
-            if (ch != '~') {
+            if (ch != VA_SIGIL) {
                 return;
             }
         }
@@ -857,7 +863,7 @@ extern va_stream_t *va_xprintf_init(
     /* prefix part of the format string */
     va_xprintf_skip(s);
 
-    /* first ~ format */
+    /* first format */
     parse_format(s);
     return s;
 }

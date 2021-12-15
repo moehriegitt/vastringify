@@ -17,8 +17,8 @@ using different format specifiers or print function names.
 This liberates you from thinking about `%u` vs. `%lu` vs. `%llu`
 vs. `%zu`, even in portable code with different integer types: the
 compiler chooses the right function to call for your parameter.  With
-this library, they all print fine with `~v`.  Even strings print fine
-with `~v`.
+this library, they all print fine with `~s`, like also strings and
+pointers do.
 
 'Type-safe' in this context does not mean that you get more compile
 errors, but that the format specifier does not need to specify the
@@ -157,7 +157,7 @@ wrong format specifier.
 
 The format specifiers in this printing mechanism serve to define which
 output format should be used, as they are not needed for type
-information.  The format specifier "~v" can be used as a generic
+information.  The format specifier "~s" can be used as a generic
 'default' output format.
 
 ### Format Specifiers
@@ -255,10 +255,10 @@ type-safety.
 
 The following conversion letters are recognised:
 
- - `v` prints anything in default notation (mnemonic: 'value').
+ - `s` prints anything in default notation (mnemonic: 'standard').
    There are many other unassigned letters that print in default
-   notation.  `v` is not used by standard C `printf` and seems
-   unlikely to be assigned any special notation.
+   notation.  `s` is used by standard C `printf` for strings.
+   CommonLisp also uses `~s` for 'standard' format.
 
  - `o` selects octal integer notation for numeric printing (including
    pointers).
@@ -625,7 +625,7 @@ Examples:
   0eAGAIN, 0eIO, ...
 
 - any meaningless format specifier (=letter) defaults to 'print in
-  natural default form'.  It is recommended to use `~v` for default
+  natural default form'.  It is recommended to use `~s` for default
   format printing of anything.
 
 - The `=` modifier prints the last value again, possibly with a
@@ -650,7 +650,7 @@ Examples:
 - The format specifiers are not needed to prevent the program from
   crashing, because the information about the type that is passed is
   not needed.  The format really only specifies 'print like ...', so
-  by default it is recommended to just print with `~v`.
+  by default it is recommended to just print with `~s`.
 
 - Due to the type-safety, most length modifiers are not supported nor
   needed.  See `h`, `hh`, and `z` modifiers.
@@ -665,7 +665,7 @@ Examples:
   includes all characters needed for quotation.
 
 - If no format specifier is found, values are printed at the end of
-  the format string in default notation (as if printed with ~v).
+  the format string in default notation (as if printed with ~s).
 
 ## Restrictions
 
@@ -817,7 +817,7 @@ Open a file with computed name, up to a fixed path length:
 
     FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
     {
-        return fopen(va_nprintf(80, "~v/~v~.v", dir, file, suffix), "rt");
+        return fopen(va_nprintf(80, "~s/~s~.s", dir, file, suffix), "rt");
     }
 
 The same with error checking about truncated string or en- or decoding
@@ -827,7 +827,7 @@ errors:
         char const *dir, char const *file, unsigned suffix)
     {
         va_error_t e;
-        char *fn = va_nprintf(80, "~v/~v~.v", dir, file, suffix, &e);
+        char *fn = va_nprintf(80, "~s/~s~.s", dir, file, suffix, &e);
         if (e.code != VA_E_OK) {
             return NULL;
         }
@@ -844,7 +844,7 @@ use an UTF-32 format string:
         char16_t const *dir, char16_t const *file, unsigned suffix)
     {
         va_error_t e;
-        char *fn = va_nprintf(80, U"~v/~v~.v", dir, file, suffix, &e);
+        char *fn = va_nprintf(80, U"~s/~s~.s", dir, file, suffix, &e);
         if (e.code != VA_E_OK) {
             return NULL;
         }
@@ -858,7 +858,7 @@ This can also be done by creating a dynamically allocated string with
 
     FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
     {
-        char *fn = va_mprintf(va_alloc, "~v/~v~.v", dir, file, suffix);
+        char *fn = va_mprintf(va_alloc, "~s/~s~.s", dir, file, suffix);
         if (fn == NULL) {
             return NULL;
         }
@@ -874,8 +874,8 @@ using va_lprintf():
 
     FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
     {
-        char n[va_lprintf("~v/~v~.v", dir, file, suffix)];
-        return fopen(va_szprintf(n, "~v/~v~.v", dir, file, suffix), "rt");
+        char n[va_lprintf("~s/~s~.s", dir, file, suffix)];
+        return fopen(va_szprintf(n, "~s/~s~.s", dir, file, suffix), "rt");
     }
 
 ## How Does This Work?
