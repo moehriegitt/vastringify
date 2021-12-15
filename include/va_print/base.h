@@ -67,7 +67,7 @@ extern "C" {
 /**
  * Compound literal of type va_stream_t.
  */
-#define VA_STREAM(F) ((va_stream_t){ F,{0,0},0,1,0 })
+#define VA_STREAM(F) ((va_stream_t){ F,{0,0},0,1,0,0 })
 
 /** Iterator for extracting single codepoint data */
 #define VA_READ_ITER(TAKE,DATA) \
@@ -129,6 +129,9 @@ extern "C" {
 
 /** Unicode replacement character */
 #define VA_U_REPLACEMENT 0xfffd
+
+/** Unicode object replacement character */
+#define VA_U_OBJECT 0xfffc
 
 /** Unicode maximum codepoint */
 #define VA_U_MAX 0x10ffff
@@ -268,9 +271,10 @@ typedef struct {
 struct va_stream {
     va_stream_vtab_t const *vtab;
     va_read_iter_t pat;
-    size_t width;
+    unsigned width;
     unsigned prec;
     unsigned opt;
+    unsigned _opt2;
 };
 
 /* error handling */

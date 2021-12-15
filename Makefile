@@ -104,7 +104,7 @@ out/test2-readme.c: \
 
 out/test1.x: out/test1.o out/libvastringify.a
 
-out/libvastringify.a: \
+LIB_O := \
     out/core.o \
     out/len.o \
     out/char.o \
@@ -133,6 +133,8 @@ out/libvastringify.a: \
     out/utf8.o \
     out/utf16.o \
     out/utf32.o
+
+out/libvastringify.a: $(LIB_O)
 
 out/%.x:
 	$(CC) $(CFLAGS) $(filter-out %.a,$+) $(LDFLAGS) $(LDLIBS) \
@@ -179,5 +181,14 @@ test: all
 	$(EXECUTE) ./out/test1.x > test.out
 	cat test.out
 	perl -n cmp.pl test.out
+
+.PHONY: stack
+stack: $(LIB_O:.o=.png) $(LIB_O:.o=.dot)  $(LIB_O:.o=.dot)
+
+out/%.dot: out/%.s
+	./stack.pl $<
+
+%.png: %.dot
+	dot -Tpng $< -o $@
 
 -include out/*.d

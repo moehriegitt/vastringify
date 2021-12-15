@@ -70,12 +70,12 @@ extern "C" {
 #define VA_OPT_ZERO   0x0004
 /** '-' modifier */
 #define VA_OPT_MINUS  0x0008
-/** precision was given ('.' modifier) */
-#define VA_OPT_PREC   0x0010
 /** '=' modifier */
-#define VA_OPT_EQUAL  0x0020
+#define VA_OPT_EQUAL  0x0010
 /** internal: simulate printing */
-#define VA_OPT_SIM    0x0040
+#define VA_OPT_SIM    0x0020
+/** reserved */
+#define VA_OPT_X6     0x0040
 /** reserved */
 #define VA_OPT_X7     0x0080
 
@@ -102,15 +102,10 @@ extern "C" {
 #define VA_MODE_X7    7
 
 /* internal states for parsing format specifiers */
-#define VA_OPT_STATE   0xe000
-#define VA_OPT_STATE0  0x0000 /* in normal string, '%' starts seq */
-#define VA_OPT_STATE1  0x2000 /* after the width, '.' start prec */
-#define VA_OPT_STATE2  0x4000
-#define VA_OPT_STATE3  0x6000 /* after the prec, form char follows */
-#define VA_OPT_STATE4  0x8000
-#define VA_OPT_STATE5  0xa000 /* '*' for width was parsed */
-#define VA_OPT_STATE6  0xc000
-#define VA_OPT_STATE7  0xe000 /* '*' for prec was parsed */
+#define VA_OPT_STATE   (13, 7U)
+#define VA_STATE_WIDTH 1 /* after the width or '*' */
+#define VA_STATE_PREC  2 /* after the prec or '.*' */
+#define VA_STATE_SKIP  3 /* next arg should be skipped */
 
 /** quotation */
 #define VA_OPT_QUOTE   (16, 3U)
@@ -137,6 +132,20 @@ extern "C" {
 
 /** mask of resetting print options, without resetting the error */
 #define VA_OPT_RESET  VA_EXP1(VA_MASH(VA_OPT_ERR))
+
+/** mask for casting width */
+#define VA_WIDTH_MASK 0x7fffffff
+/** width is not given */
+#define VA_WIDTH_NONE VA_WIDTH_MASK
+/** maximum supported width */
+#define VA_WIDTH_MAX (VA_WIDTH_MASK-1)
+
+/** mask for casting precisino */
+#define VA_PREC_MASK 0x7fffffff
+/** precision is not given */
+#define VA_PREC_NONE VA_PREC_MASK
+/** maximum supported precision */
+#define VA_PREC_MAX  (VA_PREC_MASK-1)
 
 /* ********************************************************************** */
 /* static inline functions */

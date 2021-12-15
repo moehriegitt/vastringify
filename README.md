@@ -26,7 +26,7 @@ argument type, but just defines the print format.  In fact, format
 strings with this library will have less compile-time checking (namely
 none) than with modern compilers for standard `printf`.  This approach
 is still safer: with this library, you just cannot pass the wrong
-size parameter and crash.
+size parameter and crash, because `...` is avoided.
 
 ## Examples
 
@@ -256,9 +256,8 @@ type-safety.
 The following conversion letters are recognised:
 
  - `s` prints anything in default notation (mnemonic: 'standard').
-   There are many other unassigned letters that print in default
-   notation.  `s` is used by standard C `printf` for strings.
-   CommonLisp also uses `~s` for 'standard' format.
+   `s` is used by standard C `printf` for strings, and CommonLisp
+   uses `~s` for 'standard' format.
 
  - `o` selects octal integer notation for numeric printing (including
    pointers).
@@ -269,7 +268,7 @@ The following conversion letters are recognised:
  - `u` is equivalent to `zd`, i.e., prints a signed integer as
    unsigned in decimal notation.  This implicitly sets the `z`
    option, which also affects quoted string printing, so `~qu`
-   prints strings like `~qzv`.
+   prints strings like `~qzs`.
 
  - `x` or `X` selects hexadecimal integer notation for numeric
    printing (including pointers).  `x` uses lower case digits,
@@ -290,25 +289,37 @@ The following conversion letters are recognised:
    prints the pointer value instead of the contents.  Note that
    it also prints signed numbers: `va_print("~p",-5)` prints `-0x5`.
 
- - `P` is just like `p`, but with upper case hexadecial digits.
-
  - `c` prints integers (but not pointers) as characters, like a
    one-element string.  Note that the NUL character is not printed,
    but behaves like an empty string.  For string quotation where
    hexadecimals are printed, this uses lower case characters.
 
- - `C` is just like `c`, but in string quotation when hexadecimals
-   are printed, uses upper case characters.
+ - `a`, `f`, and `g` print like `s`, but will print differently when
+   floating point support is added.
 
- - `t` prints the argument type before modifications, in C
-   syntax: `int8_`..`int64_t`, `uint8_t`..`uint64_t`, `char*`,
+ - `t` prints the argument type in C syntax:
+   `int8_`..`int64_t`, `uint8_t`..`uint64_t`, `char*`,
    `char16_t*`, `char32_t*`, `void*`.  Note that `va_error_t*`
    arguments never print, and never consume a `~` format, but
    always just return the stream error.
 
- - any letter not mentioned above or any combination of letter and
-   type not mentioned above prints in default notation.  If the letter
-   is upper case, it uses upper case letters where appropriate.
+ - any letter mentioned above in lowercase only also exists in
+   uppercase, and then prints whatever is usually printed in lowercase
+   in uppercase, like like hexadecimal digits or numeric base prefixes
+   like `0B` or `0X`.
+
+ - any letter not mentioned above is reserved for future use.
+   If used, U+FFFC, the object replacement character, is output
+   and the argument is skipped.
+   Unfortunately, no compile time error can be generated.
+
+ - any combination of letter and type not mentioned above prints in
+   default notation `~s`.
+
+ - `~` prints `~` characters.  By default, one is printed.  The
+   width gives the number of tildes, e.g. `~5~` prints `~~~~~`,
+   and `~0~` prints nothing.  `~*~` reads the width from an
+   argument.  The precision and justification flags are ignored.
 
 Function parameters behind the last format specifier in the format
 string are printed in default notation after everything that is
@@ -389,7 +400,7 @@ principle be used and passed through the library.
 
 The only place the core library uses Unicode interpretation is when
 quoting C or JSON strings for codepoints >0x80 (e.g., when formatting
-with `~0qv`), and if a decoding error is encountered or if the value
+with `~0qs`), and if a decoding error is encountered or if the value
 is not valid Unicode, then it uses \ufffd to show this, because the
 quotation using \u or \U would otherwise be a lie.
 
@@ -557,8 +568,8 @@ These are suffixed to find the vtab object for writing:
 Examples:
 
 - `va_printf("~qs", "foo'bar")` prints `"foo\'bar"`.
-- `va_printf("~qv", "foo'bar")` prints `"foo\'bar"`.
-- `va_printf("~qzv", u"foo'bar")` prints `u"foo\'bar"`.
+- `va_printf("~qs", "foo'bar")` prints `"foo\'bar"`.
+- `va_printf("~qzs", u"foo'bar")` prints `u"foo\'bar"`.
 - `va_printf("~qc", 10)` prints `'\n'`.
 - `va_printf("~qzc", 10)` prints `U'\n'`
 - `va_printf("~#qc", 16)` prints `\020`.
@@ -680,7 +691,7 @@ Examples:
   output.
 
 - `%n` is not implemented, because pointers to integers are already
-  used for strings, and the ambiguity between 'size_t*' and
+  used for strings, and the ambiguity between `size_t*` and
   `char32_t*` is common on many 32-bit systems, where both are
   `unsigned*` in C.  Distinguishing whether to read or to write based
   on the format string alone is also the opposite of what this library
@@ -694,7 +705,7 @@ Examples:
   fact, it would probably make the whole point of this library
   infeasible.  There is the extended `=` option for at least printing
   the same value multiple times, so `~d ~=#x` prints the same value
-  decimal and hexadecimal, and `~qv ~=p` prints a string in C quotation
+  decimal and hexadecimal, and `~qs ~=p` prints a string in C quotation
   and its pointer value.
 
 - no floats, because support would be too large for a small library.

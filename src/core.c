@@ -32,12 +32,10 @@ static void render(va_stream_t *s, unsigned c)
     if (c == 0) {
         return;
     }
-    if (s->opt & VA_OPT_SIM) {
-        if (s->width > 0) {
-            s->width--;
-        }
+    if (s->width > 0) {
+        s->width--;
     }
-    else {
+    if ((s->opt & VA_OPT_SIM) == 0) {
         s->vtab->put(s, c);
     }
 }
@@ -223,14 +221,14 @@ static void render_rawstr(va_stream_t *s, char const *start)
 {
     assert(start != NULL);
 
-    /* reinterpret 'width' into how many spaces are written */
-    for(char const *cur = start; (s->width > 0) && (*cur != 0); cur++) {
-        s->width--;
-    }
-
-    /* space */
     if ((s->opt & VA_OPT_MINUS) == 0) {
-        for (; s->width > 0; s->width--) {
+        /* reinterpret 'width' into how many spaces are written */
+        for(char const *cur = start; (s->width > 0) && (*cur != 0); cur++) {
+            s->width--;
+        }
+
+        /* space */
+        while (s->width > 0) {
             render(s, ' ');
         }
     }
@@ -241,10 +239,8 @@ static void render_rawstr(va_stream_t *s, char const *start)
     }
 
     /* space */
-    if ((s->opt & VA_OPT_MINUS) != 0) {
-        for (; s->width > 0; s->width--) {
-            render(s, ' ');
-        }
+    while (s->width > 0) {
+        render(s, ' ');
     }
 }
 
@@ -273,7 +269,7 @@ static void render_iter_algo(va_stream_t *s, va_read_iter_t *iter)
     /* compute string array max. size */
     void const *start = iter->cur;
     void const *end = NULL;
-    if (s->opt & VA_OPT_PREC) {
+    if (s->prec != VA_PREC_NONE) {
         end = iter->vtab->end(iter, s->prec);
     }
 
@@ -308,22 +304,22 @@ static void render_iter_algo(va_stream_t *s, va_read_iter_t *iter)
     }
 
     /* reinterpret 'width' into how many spaces are written */
-    if (s->width <= (delim & 0xff)) {
-        s->width = 0;
-    }
-    else {
-        s->width -= (delim & 0xff);
-        s->opt |= VA_OPT_SIM;
-        iter_start(s,iter,start);
-        while ((s->width > 0) && ((ch = iter_take(s,iter,end)) != 0)) {
-            render_quotec(s, ch);
-        }
-        VA_MCLR(s->opt, VA_OPT_SIM);
-    }
-
-    /* space */
     if ((s->opt & VA_OPT_MINUS) == 0) {
-        for (; s->width > 0; s->width--) {
+        if (s->width <= (delim & 0xff)) {
+            s->width = 0;
+        }
+        else {
+            s->width -= (delim & 0xff);
+            s->opt |= VA_OPT_SIM;
+            iter_start(s,iter,start);
+            while ((s->width > 0) && ((ch = iter_take(s,iter,end)) != 0)) {
+                render_quotec(s, ch);
+            }
+            VA_MCLR(s->opt, VA_OPT_SIM);
+        }
+
+        /* space */
+        while (s->width > 0) {
             render(s, ' ');
         }
     }
@@ -337,10 +333,8 @@ static void render_iter_algo(va_stream_t *s, va_read_iter_t *iter)
     render(s, (delim >> 16) & 0xff);
 
     /* space */
-    if ((s->opt & VA_OPT_MINUS) != 0) {
-        for (; s->width > 0; s->width--) {
-            render(s, ' ');
-        }
+    while (s->width > 0) {
+        render(s, ' ');
     }
 }
 
@@ -356,6 +350,11 @@ static void render_iter(va_stream_t *s, va_read_iter_t *iter)
     }
     render_iter_algo(s, iter);
     return;
+}
+
+static inline unsigned get_prec(va_stream_t *s, unsigned def)
+{
+    return s->prec == VA_PREC_NONE ? def : s->prec;
 }
 
 static void render_int(
@@ -379,30 +378,32 @@ static void render_int(
 
     unsigned char prefix1 = 0;
     unsigned char prefix2 = 0;
-    if ((s->opt & VA_OPT_VAR) != 0) {
-        switch (base) {
-        case 2:
-            prefix1 = '0';
-            prefix2 = (s->opt & VA_OPT_UPPER) ? 'B' : 'b';
-            break;
-        case 8:
-            prefix1 = '0';
-            break;
-        case 16:
-            prefix1 = '0';
-            prefix2 = (s->opt & VA_OPT_UPPER) ? 'X' : 'x';
-            break;
-        case 32:
-            prefix1 = '0';
-            prefix2 = (s->opt & VA_OPT_UPPER) ? 'E' : 'e';
-            break;
+    if (x > 0) {
+        if ((s->opt & VA_OPT_VAR) != 0) {
+            switch (base) {
+            case 2:
+                prefix1 = '0';
+                prefix2 = (s->opt & VA_OPT_UPPER) ? 'B' : 'b';
+                break;
+            case 8:
+                prefix1 = '0';
+                break;
+            case 16:
+                prefix1 = '0';
+                prefix2 = (s->opt & VA_OPT_UPPER) ? 'X' : 'x';
+                break;
+            case 32:
+                prefix1 = '0';
+                prefix2 = (s->opt & VA_OPT_UPPER) ? 'E' : 'e';
+                break;
+            }
         }
     }
 
     /* compute length */
-    size_t len = 0;
+    unsigned len = 0;
     unsigned long long div = 0;
-    if ((x > 0) || (s->prec > 0)) {
+    if ((x > 0) || (get_prec(s,1) > 0)) {
         div = 1;
         len++;
         while ((x / div) >= base) {
@@ -410,45 +411,45 @@ static void render_int(
             len++;
         }
     }
+    unsigned blen = len;
+    if (len < get_prec(s,1)) {
+        len = get_prec(s,1);
+    }
 
-    size_t blen = len;
-    if (len < s->prec) {
-        len = s->prec;
-    }
-    if (x > 0) {
-        len += !!prefix1;
-        len += !!prefix2;
-    }
     len += !!prefix0;
-    if (((s->opt & (VA_OPT_ZERO|VA_OPT_PREC|VA_OPT_MINUS)) == VA_OPT_ZERO) &&
+    len += !!prefix1;
+    len += !!prefix2;
+
+    if (((s->opt & (VA_OPT_ZERO|VA_OPT_MINUS)) == VA_OPT_ZERO) &&
+        (s->prec == VA_PREC_NONE) &&
         (len < s->width))
     {
         len = s->width;
     }
 
-    s->width = (s->width > len) ? (s->width - len) : 0;
-
-    /* print */
     if ((s->opt & VA_OPT_MINUS) == 0) {
-        for (; s->width > 0; s->width--) {
+        s->width = (s->width > len) ? (s->width - len) : 0;
+        while (s->width > 0) {
             render(s, ' ');
         }
     }
-    if ((len > blen) && prefix0) {
+
+    if (prefix0) {
         render(s, prefix0);
         len--;
     }
-    if ((len > blen) && prefix1) {
+    if (prefix1) {
         render(s, prefix1);
         len--;
     }
-    if ((len > blen) && prefix2) {
+    if (prefix2) {
         render(s, prefix2);
         len--;
     }
 
-    for (size_t i = blen; i < len; i++) {
+    while (len > blen) {
         render(s, '0');
+        len--;
     }
 
     /* which set of digits? */
@@ -462,10 +463,8 @@ static void render_int(
         div /= base;
     }
 
-    if ((s->opt & VA_OPT_MINUS) != 0) {
-        for (; s->width > 0; s->width--) {
-            render(s, ' ');
-        }
+    while (s->width > 0) {
+        render(s, ' ');
     }
 }
 
@@ -618,29 +617,36 @@ static bool parse_format(va_stream_t *s)
 {
     va_read_iter_t iter[1] = { s->pat };
 
+again:;
     unsigned c = iter_take(s, iter, NULL);
+    /* stay at end of string, regardless of STATE */
     if (c == 0) {
         s->width = 0;
-        s->prec = 1;
+        s->prec = VA_PREC_NONE;
         s->opt &= VA_OPT_RESET;
         return 0;
     }
 
-    if ((s->opt & VA_OPT_STATE4) != 0) {
-        /* The '*' was not provided an integer => clear bit and pretend
-         * nothing happened. */
-        s->opt ^= VA_OPT_STATE4;
-    }
-
-    if ((s->opt & VA_OPT_STATE) == 0) {
+    if (VA_BGET(s->opt, VA_OPT_STATE) == 0) {
         s->width = 0;
-        s->prec = 1;
+        s->prec = VA_PREC_NONE;
         s->opt &= VA_OPT_RESET;
-        if (c != VA_SIGIL) {
-            return 0;
+
+        /* print part between format specifiers */
+        for (;;) {
+            if (c == VA_SIGIL) {
+                c = iter_take_pat(s, iter);
+                break;
+            }
+            render(s, c);
+            c = iter_take_pat(s, iter);
+            if (c == 0) {
+                return 0;
+            }
         }
 
-        c = iter_take_pat(s, iter);
+        /* assume default width */
+        s->width = VA_WIDTH_NONE;
 
         /* parse options */
         for(;;) {
@@ -670,12 +676,12 @@ static bool parse_format(va_stream_t *s)
         }
 end_of_flags:
 
-        s->opt ^= VA_OPT_STATE1;
+        VA_BSET(s->opt, VA_OPT_STATE, VA_STATE_WIDTH);
 
         /* parse width */
         if (c == '*') {
+            s->width = 0;
             s->pat = *iter;
-            s->opt ^= VA_OPT_STATE4;
             return 0;
         }
         if ((c >= '1') && (c <= '9')) {
@@ -688,17 +694,15 @@ end_of_flags:
         }
     }
 
-    if ((s->opt & VA_OPT_STATE) == VA_OPT_STATE1) {
-        s->opt ^= VA_OPT_STATE2;
+    if (VA_BGET(s->opt, VA_OPT_STATE) == VA_STATE_WIDTH) {
+        VA_BSET(s->opt, VA_OPT_STATE, VA_STATE_PREC);
 
         /* parse precision */
         if (c == '.') {
-            s->opt |= VA_OPT_PREC;
             s->prec = 0;
             c = iter_take_pat(s, iter);
             if (c == '*') {
                 s->pat = *iter;
-                s->opt ^= VA_OPT_STATE4;
                 return 0;
             }
             while ((c >= '0') && (c <= '9')) {
@@ -708,8 +712,8 @@ end_of_flags:
         }
     }
 
-    if ((s->opt & VA_OPT_STATE) == VA_OPT_STATE3) {
-        s->opt ^= VA_OPT_STATE3;
+    if (VA_BGET(s->opt, VA_OPT_STATE) == VA_STATE_PREC) {
+        VA_BSET(s->opt, VA_OPT_STATE, 0);
 
         /* parse sizes and quotation */
         for(;;) {
@@ -736,9 +740,34 @@ end_of_flags:
         }
 end_of_size:
 
-
         /* parse format */
         switch (c) {
+        case 'h': case 'H':
+        case 'z': case 'Z':
+        case 'q': case 'Q':
+        case 'k': case 'K':
+        default:
+            render(s, VA_U_OBJECT);
+            VA_BSET(s->opt, VA_OPT_STATE, VA_STATE_SKIP);
+            break;
+
+        case VA_SIGIL:
+            if (s->width == VA_WIDTH_NONE) {
+                s->width = (s->opt & VA_OPT_ZERO) ? 0 : 1;
+            }
+            while (s->width > 0) {
+                render(s, VA_SIGIL);
+            }
+            goto again;
+
+        case 's': case 'S':
+            break;
+        case 'a': case 'A':
+            break;
+        case 'f': case 'F':
+            break;
+        case 'g': case 'G':
+            break;
         case 'b': case 'B':
             VA_BSET(s->opt, VA_OPT_BASE, 2);
             break;
@@ -747,7 +776,8 @@ end_of_size:
             break;
         case 'u': case 'U':
             VA_BSET(s->opt, VA_OPT_SIGN, VA_SIGN_ZEXT);
-            /*fall-through*/
+            VA_BSET(s->opt, VA_OPT_BASE, 10);
+            break;
         case 'd': case 'D':
         case 'i': case 'I':
             VA_BSET(s->opt, VA_OPT_BASE, 10);
@@ -782,42 +812,31 @@ end_of_size:
         }
     }
 
-    assert((s->opt & VA_OPT_STATE) == 0);
+    if (s->width == VA_WIDTH_NONE) {
+        s->width = 0;
+    }
+    assert((VA_BGET(s->opt, VA_OPT_STATE) == 0) ||
+           (VA_BGET(s->opt, VA_OPT_STATE) == VA_STATE_SKIP));
     return s->opt & VA_OPT_EQUAL ? 1 : 0;
 }
 
-static void va_xprintf_skip(va_stream_t *s)
+static bool set_ast(va_stream_t *s, long long x)
 {
-    va_read_iter_t iter[1] = { s->pat };
-
-    unsigned ch;
-    while ((ch = iter_take(s, iter, NULL)) != 0) {
-        if (ch == VA_SIGIL) {
-            ch = iter_take(s, iter, NULL);
-            if (ch != VA_SIGIL) {
-                return;
-            }
-        }
-        render(s, ch);
-        s->pat.cur = iter->cur;
-    }
-}
-
-static bool va_xprintf_set_ast(va_stream_t *s, long long x)
-{
-    if ((s->opt & VA_OPT_STATE) == VA_OPT_STATE5) {
-        s->opt ^= VA_OPT_STATE4;
+    switch (VA_BGET(s->opt, VA_OPT_STATE)) {
+    case VA_STATE_WIDTH:
         if (x < 0) {
             s->opt |= VA_OPT_MINUS;
             x = -x;
         }
-        s->width = (size_t)x;
+        s->width = (x >= VA_WIDTH_MAX) ? VA_WIDTH_MAX : (x & VA_WIDTH_MASK);
         return 0;
-    }
 
-    if ((s->opt & VA_OPT_STATE) == VA_OPT_STATE7) {
-        s->opt ^= VA_OPT_STATE4;
-        s->prec = (unsigned)x;
+    case VA_STATE_PREC:
+        s->prec = (x >= VA_PREC_MAX) ? VA_PREC_MAX : (x & VA_PREC_MASK);
+        return 0;
+
+    case VA_STATE_SKIP:
+        VA_BSET(s->opt, VA_OPT_STATE, 0);
         return 0;
     }
 
@@ -827,9 +846,8 @@ static bool va_xprintf_set_ast(va_stream_t *s, long long x)
 static va_stream_t *xprintf_sll(va_stream_t *s, long long x, unsigned sz)
 {
     do {
-        if (va_xprintf_set_ast(s, x)) {
+        if (set_ast(s, x)) {
             render_sll(s, x, sz);
-            va_xprintf_skip(s);
         }
     } while (parse_format(s));
     return s;
@@ -838,9 +856,8 @@ static va_stream_t *xprintf_sll(va_stream_t *s, long long x, unsigned sz)
 static va_stream_t *xprintf_ull(va_stream_t *s, unsigned long long x, unsigned sz)
 {
     do {
-        if (va_xprintf_set_ast(s, (long long)x)) {
+        if (set_ast(s, (long long)x)) {
             render_ull(s, x, sz);
-            va_xprintf_skip(s);
         }
     } while (parse_format(s));
     return s;
@@ -849,48 +866,25 @@ static va_stream_t *xprintf_ull(va_stream_t *s, unsigned long long x, unsigned s
 /* ********************************************************************** */
 /* extern functions */
 
-extern va_stream_t *va_xprintf_init(
-    va_stream_t *s,
-    void const *x,
-    va_read_iter_vtab_t const *get_vtab)
-{
-    /* init */
-    s->pat = VA_READ_ITER(get_vtab, x);
-    if (s->vtab->init != NULL) {
-        s->vtab->init(s);
-    }
-
-    /* prefix part of the format string */
-    va_xprintf_skip(s);
-
-    /* first format */
-    parse_format(s);
-    return s;
-}
-
 extern va_stream_t *va_xprintf_iter(
     va_stream_t *s,
     va_read_iter_t *x)
 {
     void const *start = x->cur;
-    for(;;) {
+    do {
         x->cur = start;
-        if (va_xprintf_set_ast(s, 0)) {
+        if (set_ast(s, 0)) {
             render_iter(s, x);
-            va_xprintf_skip(s);
         }
-        if (!parse_format(s)) {
-            return s;
-        }
-    }
+    } while (parse_format(s));
+    return s;
 }
 
 extern va_stream_t *va_xprintf_ptr(va_stream_t *s, void const *x)
 {
     do {
-        if (va_xprintf_set_ast(s, 0)) {
+        if (set_ast(s, 0)) {
             render_ptr(s, x);
-            va_xprintf_skip(s);
         }
     } while (parse_format(s));
     return s;
@@ -960,5 +954,21 @@ extern va_stream_t *va_xprintf_error_t_p(va_stream_t *s, va_error_t *x)
 {
     x->code = VA_BGET(s->opt, VA_OPT_ERR);
     VA_BSET(s->opt, VA_OPT_ERR, 0);
+    return s;
+}
+
+extern va_stream_t *va_xprintf_init(
+    va_stream_t *s,
+    void const *x,
+    va_read_iter_vtab_t const *get_vtab)
+{
+    /* init */
+    s->pat = VA_READ_ITER(get_vtab, x);
+    if (s->vtab->init != NULL) {
+        s->vtab->init(s);
+    }
+
+    /* first format */
+    parse_format(s);
     return s;
 }
