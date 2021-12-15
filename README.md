@@ -31,7 +31,7 @@ size parameter and crash.
 ## Examples
 
  - `va_printf("%s %s %s", 65, (long long)65, "65")` prints `65 65 65`
- - `va_printf("%c %c %c", 65, (long long)65, "65")` prints `'A' 'A' 65`
+ - `va_printf("%c %c %c", 65, (long long)65, "65")` prints `A A 65`
  - `va_printf("%x %x %x", 65, (long long)65, "65")` prints `41 41 65`
  - `va_printf("%p %p %p", 65, (long long)65, "65")` prints
    `0x41 0x41 0x8838abc3932` (the pointer value of the string)
