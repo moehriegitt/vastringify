@@ -28,7 +28,7 @@ extern "C" {
 #define VA_CONCAT2(A,B) A ## B
 
 #define VA_BLOCK_STMT(A) do{ A ;}while(0)
-#define VA_BLOCK_EXPR(A) ({ A ;})
+#define VA_BLOCK_EXPR(A) __extension__({ A ;})
 
 /* deep evaluation */
 #define VA_EXP1(...)   __VA_ARGS__

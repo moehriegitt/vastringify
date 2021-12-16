@@ -36,13 +36,13 @@ extern "C" {
 #define VA_BPUT(X,W,V) ((((X) | VA_MASH(W)) ^ VA_MASH(W)) | ((V) << VA_SHIFT(W)))
 
 #define VA_BSET(X,W,V) \
-    ({ \
+    __extension__({ \
         __typeof__(X) *_xp = &(X); \
         *_xp = VA_BPUT(*_xp,W,V); \
     })
 
 #define VA_MSET(X,MASK,V) \
-    ({ \
+    __extension__({ \
         __typeof__(X) *_xp = &(X); \
         __typeof__(X) _m = (MASK); \
         *_xp |= _m; \
@@ -51,7 +51,7 @@ extern "C" {
    })
 
 #define VA_MSET_IF(X,MASK,COND) \
-    ({ \
+    __extension__({ \
         __typeof__(X) *_xp = &(X); \
         __typeof__(X) _m = (MASK); \
         *_xp |= _m; \

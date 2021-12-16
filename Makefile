@@ -54,7 +54,8 @@ CFLAGS := \
         $(CFLAGS.warn) \
         $(CFLAGS.err) \
         $(CFLAGS.debug) \
-        $(CFLAGS.opt))
+        $(CFLAGS.opt) \
+        $(MORE_CFLAGS))
 
 CPPFLAGS.dep := \
     -MMD -MP
@@ -65,7 +66,8 @@ CPPFLAGS.inc := \
 CPPFLAGS := \
     $(filter-out $(NO_FLAGS), \
         $(CPPFLAGS.dep) \
-        $(CPPFLAGS.inc))
+        $(CPPFLAGS.inc) \
+        $(MORE_CPPFLAGS))
 
 LDFLAGS := \
     -L./out
