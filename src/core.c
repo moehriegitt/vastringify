@@ -305,16 +305,22 @@ static void render_iter_algo(va_stream_t *s, va_read_iter_t *iter)
 
     /* reinterpret 'width' into how many spaces are written */
     if ((s->opt & VA_OPT_MINUS) == 0) {
-        s->opt |= VA_OPT_SIM;
-        iter_start(s,iter,start);
-        while ((s->width > (delim & 0xff)) && ((ch = iter_take(s,iter,end)) != 0)) {
-            render_quotec(s, ch);
+        if (s->width <= (delim & 0xff)) {
+            s->width = 0;
         }
-        VA_MCLR(s->opt, VA_OPT_SIM);
+        else {
+            s->width -= (delim & 0xff);
+            s->opt |= VA_OPT_SIM;
+            iter_start(s,iter,start);
+            while ((s->width > 0) && ((ch = iter_take(s,iter,end)) != 0)) {
+                render_quotec(s, ch);
+            }
+            VA_MCLR(s->opt, VA_OPT_SIM);
 
-        /* space */
-        while (s->width > (delim & 0xff)) {
-            render(s, ' ');
+            /* space */
+            while (s->width > 0) {
+                render(s, ' ');
+            }
         }
     }
 
