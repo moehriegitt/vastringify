@@ -965,20 +965,52 @@ NUL termination and initial `malloc()`), and each `render()` consumes
 one argument by printing it (once or more times) or using it as a
 width or precision.
 
-The macro magic is called `VA_REC()`.  You can try it with `gcc -E` or
-something:
+The macro magic is called `VA_REC()`.  Additional to what is described
+above, it passes a first parameter to the `init()` and `render()`
+calls to show whether the call is the last one of the expression. This
+is done to be able to optimise the number of calls at the call site.
+You can try it with `gcc -E`:
 
-    VA_REC(f,a)        -> a
-    VA_REC(f,a,b)      -> f(a,b)
-    VA_REC(f,a,b,c)    -> f(f(a,b),c)
-    VA_REC(f,a,b,c,d)  -> f(f(f(a,b),c),d)
+```c
+VA_REC(render, init, stream)
+VA_REC(render, init, stream, a)
+VA_REC(render, init, stream, a, b)
+...
+```
+
+This becomes:
+
+```c
+init(0,stream)
+render(0, init(1,stream), a)
+render(0, render(1, init(1,stream), a), b)
+```
+
+The `init(0,...)` macro call is an extern function call that
+initialises the stream, initialises the output stream (e.g., NUL
+terminates a char array and/or mallocs initial memory), and parses the
+format string, so that even with no arguments, the expression behaves
+in a sane way.
+
+The `init(1,...)` macro call instead resolves to a fast inline
+function that initialises the stream by just setting all the slots.
+The format and output stream initialisation is then done by the first
+`render(...)` invocation.  This way, there is the minimal number of
+extern calls to keep the call site code small.
 
 The `render()` resolves to a `_Generic()` call that selects the
-appropriate printer based on the type of the argument, so that
-for each argument, a different C functions may be invoked. E.g.:
+appropriate printer based on the type of the argument, and based on
+whether it's the last call of the expression, so that for each
+argument, a different C functions may be invoked.  E.g.:
 
     int i;
-    render(f,i)    -> print_int(f,i)
+    render(1,s,i)    -> print_int(s,i)
+    render(0,s,i)    -> print_last_int(s,i)
 
-    char const *s;
-    render(f,s)    -> print_string(f,s)
+    char const *x;
+    render(1,s,x)    -> print_string(s,x)
+    render(0,s,x)    -> print_last_string(s,x)
+
+The `_last` variant finishes printing the format string even if no
+more argument is given -- this is used to make error handling sane
+and not just stop in the middle of the format string.

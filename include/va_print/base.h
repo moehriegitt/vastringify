@@ -47,31 +47,6 @@ extern "C" {
 #define VA_P(X,...)    X
 #define VA_F(...)      VA_H
 
-#if 0
-/* FIXME: obsolete, delete; improved version below */
-#define VA_O3(...)     VA_P(__VA_ARGS__)
-#define VA_O2(SUB,...) VA_O3(SUB ## __VA_ARGS__)
-#define VA_O1(SUB,...) VA_O2(SUB,__VA_ARGS__)
-#define VA_O(SUB,...)  VA_O1(SUB, VA_F ,##__VA_ARGS__ ())
-
-/* recursive expressions */
-#define VA_RECVA_F     VA_RECC1,
-#define VA_RECVA_H     VA_RECC0,
-#define VA_RECC0()     VA_RECC00
-#define VA_RECC1()     VA_RECB2
-
-#define VA_RECC00(FUN,ARG,...) ARG
-
-#define VA_RECB2(FUN,A1,A2,...) \
-    VA_RECB(FUN,FUN(A1,A2),##__VA_ARGS__)
-
-#define VA_RECB(FUN,ARG,...)  \
-    VA_O(VA_REC,##__VA_ARGS__) VA_PAR (FUN,ARG,##__VA_ARGS__)
-
-#define VA_REC(FUN,ARG,...)  \
-    VA_EXP(VA_RECB VA_NIX (FUN,ARG VA_NOC(__VA_ARGS__)))
-#endif
-
 /* optionality */
 #define VA_SUBVA_H(Z,N)  Z
 #define VA_SUBVA_F(Z,N)  N
@@ -82,13 +57,13 @@ extern "C" {
 #define VA_OPT(Z,N,...)  VA_OPT0(VA_OPT1 VA_NIX (Z,N, VA_F VA_NOC(__VA_ARGS__) ()))
 
 /* recursive expressions*/
-#define VA_REU0B(F,A,...)   A
-#define VA_REU1B(F,A,X,...) VA_REUA(F,F VA_NIX (VA_OPT(0,1,__VA_ARGS__),A,X),__VA_ARGS__)
-#define VA_REU0()           VA_REU0B
-#define VA_REU1()           VA_REU1B
-#define VA_REUA(F,A,...)    VA_OPT(VA_REU0,VA_REU1,__VA_ARGS__) VA_PAR (F,A,__VA_ARGS__)
+#define VA_REC0B(F,A,...)   A
+#define VA_REC1B(F,A,X,...) VA_RECA(F,F VA_NIX (VA_OPT(0,1,__VA_ARGS__),A,X),__VA_ARGS__)
+#define VA_REC0()           VA_REC0B
+#define VA_REC1()           VA_REC1B
+#define VA_RECA(F,A,...)    VA_OPT(VA_REC0,VA_REC1,__VA_ARGS__) VA_PAR (F,A,__VA_ARGS__)
 
-#define VA_REU(F,I,A,...)   VA_EXP(VA_REUA(F,I VA_NIX (VA_OPT(0,1,__VA_ARGS__),A),__VA_ARGS__))
+#define VA_REC(F,I,A,...)   VA_EXP(VA_RECA(F,I VA_NIX (VA_OPT(0,1,__VA_ARGS__),A),__VA_ARGS__))
 
 /**
  * Compound literal of type va_stream_t.

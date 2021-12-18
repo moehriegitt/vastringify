@@ -170,7 +170,7 @@ extern "C" {
  * this expression, so that the compiler can reuse the stack.
  */
 #define va_xprintf(Zero,X,...) \
-    ((__typeof__(Zero))(VA_REU( \
+    ((__typeof__(Zero))(VA_REC( \
         va_xformat, \
         va_xinit,((Zero),X,va_format_gen(X)), __VA_ARGS__)))
 
