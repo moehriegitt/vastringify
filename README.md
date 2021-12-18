@@ -953,7 +953,7 @@ Into a recursive call sequence:
 
 ```c
 init(&STREAM(...), format);
-render(init(&STREAM(...), format), arg1)
+render(init(&STREAM(...), format), arg1);
 render(render(init(&STREAM(...), format), arg1), arg2);
 ...
 ```
