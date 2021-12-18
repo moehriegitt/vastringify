@@ -88,13 +88,13 @@ VA_STREAM_CHARP(Char const *s, size_t n);
 #include <va_print/malloc.h>
 
 char *
-va_mprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
+va_mprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...);
 
 char16_t *
-va_umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
+va_umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...);
 
 char32_t *
-va_Umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
+va_Umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...);
 
 va_stream_vec_t
 VA_STREAM_VEC(void *(*alloc)(void *, size_t, size_t));
@@ -118,7 +118,7 @@ VA_STREAM_LEN();
 #include <va_print/core.h>
 
 va_stream_...t *
-va_xprintf(va_stream_...t *s, Char const *format, ...)
+va_xprintf(va_stream_...t *s, Char const *format, ...);
 
 void
 va_iprintf(va_stream_...t *s, Char const *format, ...);
@@ -133,15 +133,17 @@ typedef struct { ... } va_stream_t;
 
 typedef struct { ... } va_stream_vtab_t;
 
-typedef struct { unsigned code; } va_error_t
-#define VA_E_OK
-#define VA_E_NULL
-#define VA_E_DECODE
-#define VA_E_ENCODE
-#define VA_E_TRUNC
+typedef struct { unsigned code; } va_error_t;
+#define VA_E_OK     ...
+#define VA_E_NULL   ...
+#define VA_E_DECODE ...
+#define VA_E_ENCODE ...
+#define VA_E_TRUNC  ...
+#define VA_E_FORMAT ...
+#define VA_E_ARGC   ...
 
 va_stream_t
-VA_STREAM(va_stream_vtab_t const *vtab)
+VA_STREAM(va_stream_vtab_t const *vtab);
 ```
 
 ## Description
