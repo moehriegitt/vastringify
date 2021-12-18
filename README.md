@@ -51,96 +51,98 @@ also understood by Clang and a few other compilers (`({...})`,
 
 In the following, `Char` may be `char`, `char16_t`, or `char32_t`:
 
-    #include <va_print/file.h>
+```c
+#include <va_print/file.h>
 
-    void
-    va_fprintf(FILE *f, Char const *format, ...);
+void
+va_fprintf(FILE *f, Char const *format, ...);
 
-    void
-    va_printf(Char const *format, ...);
+void
+va_printf(Char const *format, ...);
 
-    va_stream_file_t
-    VA_STREAM_FILE(FILE *f);
-
-
-    #include <va_print/char.h>
-
-    Char *
-    va_snprintf(Char *s, size_t n, Char const *format, ...);
-
-    Char *
-    va_szprintf(Char s[], Char const *format, ...);
-
-    char *
-    va_nprintf(size_t n, Char const *format, ...);
-
-    char16_t *
-    va_unprintf(size_t n, Char const *format, ...);
-
-    char32_t *
-    va_Unprintf(size_t n, Char const *format, ...);
-
-    va_stream_charp_t
-    VA_STREAM_CHARP(Char const *s, size_t n);
+va_stream_file_t
+VA_STREAM_FILE(FILE *f);
 
 
-    #include <va_print/malloc.h>
+#include <va_print/char.h>
 
-    char *
-    va_mprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
+Char *
+va_snprintf(Char *s, size_t n, Char const *format, ...);
 
-    char16_t *
-    va_umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
+Char *
+va_szprintf(Char s[], Char const *format, ...);
 
-    char32_t *
-    va_Umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
+char *
+va_nprintf(size_t n, Char const *format, ...);
 
-    va_stream_vec_t
-    VA_STREAM_VEC(void *(*alloc)(void *, size_t, size_t));
+char16_t *
+va_unprintf(size_t n, Char const *format, ...);
 
-    va_stream_vec16_t
-    VA_STREAM_VEC16(void *(*alloc)(void *, size_t, size_t));
+char32_t *
+va_Unprintf(size_t n, Char const *format, ...);
 
-    va_stream_vec32_t
-    VA_STREAM_VEC32(void *(*alloc)(void *, size_t, size_t));
-
-
-    #include <va_print/len.h>
-
-    size_t
-    va_lprintf(Char const *format, ...);
-
-    va_stream_len_t
-    VA_STREAM_LEN();
+va_stream_charp_t
+VA_STREAM_CHARP(Char const *s, size_t n);
 
 
-    #include <va_print/core.h>
+#include <va_print/malloc.h>
 
-    va_stream_...t *
-    va_xprintf(va_stream_...t *s, Char const *format, ...)
+char *
+va_mprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
 
-    void
-    va_iprintf(va_stream_...t *s, Char const *format, ...);
+char16_t *
+va_umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
 
-    void
-    va_pprintf(va_stream_vtab_t *v, Char const *format, ...);
+char32_t *
+va_Umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...)
+
+va_stream_vec_t
+VA_STREAM_VEC(void *(*alloc)(void *, size_t, size_t));
+
+va_stream_vec16_t
+VA_STREAM_VEC16(void *(*alloc)(void *, size_t, size_t));
+
+va_stream_vec32_t
+VA_STREAM_VEC32(void *(*alloc)(void *, size_t, size_t));
 
 
-    #include <va_print/base.h>
+#include <va_print/len.h>
 
-    typedef struct { ... } va_stream_t;
+size_t
+va_lprintf(Char const *format, ...);
 
-    typedef struct { ... } va_stream_vtab_t;
+va_stream_len_t
+VA_STREAM_LEN();
 
-    typedef struct { unsigned code; } va_error_t
-    #define VA_E_OK
-    #define VA_E_NULL
-    #define VA_E_DECODE
-    #define VA_E_ENCODE
-    #define VA_E_TRUNC
 
-    va_stream_t
-    VA_STREAM(va_stream_vtab_t const *vtab)
+#include <va_print/core.h>
+
+va_stream_...t *
+va_xprintf(va_stream_...t *s, Char const *format, ...)
+
+void
+va_iprintf(va_stream_...t *s, Char const *format, ...);
+
+void
+va_pprintf(va_stream_vtab_t *v, Char const *format, ...);
+
+
+#include <va_print/base.h>
+
+typedef struct { ... } va_stream_t;
+
+typedef struct { ... } va_stream_vtab_t;
+
+typedef struct { unsigned code; } va_error_t
+#define VA_E_OK
+#define VA_E_NULL
+#define VA_E_DECODE
+#define VA_E_ENCODE
+#define VA_E_TRUNC
+
+va_stream_t
+VA_STREAM(va_stream_vtab_t const *vtab)
+```
 
 ## Description
 
@@ -163,6 +165,19 @@ information.  The format specifier "~s" can be used as a generic
 
 ### Format Specifiers
 
+The format is string is decoded and then output as is into the output
+stream where it is encoded, except for sequences of `~`, which are
+interpreted as a format specifier.
+
+For each format specifier in the format string, 0, 1, or more
+arguments are read (how many is specified below).  If there are more
+arguments than what is needed for the format specifiers, the rest of
+the argumnets are ignored and the `VA_E_ARGC` stream error is set.
+
+If fewer arguments are given than needed for the format string, the
+rest of the format specifiers print empty and the `VA_E_ARGC` stream
+error is set.
+
 A format specifier begins with `~`, and what follows is similar to C:
 
  - a list of flag characters
@@ -171,7 +186,14 @@ A format specifier begins with `~`, and what follows is similar to C:
  - a list of integer mask and quotation specifiers
  - a conversion letter
 
-The following flags are recognised:
+`~` is used instead of `%` to avoid confusion in source code that uses
+both this library and the standard C `printf`.
+
+#### Flags
+
+Generally, specifying multiple identical flags like `~008s` is
+reserved for future use and should be avoided. It is unspecified how
+the current library handles such format strings.
 
  - `#` print in alternative form.  For numeric format, a prefix to
    designate the base is prefixed to the value except to 0:
@@ -182,6 +204,9 @@ The following flags are recognised:
      - for `X` and base 16, `0X` is prefixed,
      - for `e` and base 32, `0e` is prefixed,
      - for `E` and base 32, `0E` is prefixed.
+
+   In `~#p`, the `#` flag switches off the implicit `#` that is
+   contained in `p`, e.g., does not print the base prefix.
 
  For quoted strings, this inhibits printing of delimiting quotes.
 
@@ -226,7 +251,12 @@ a pointer to a string pointer is passed, then the
 pointer will be updated so that it points to the next character, i.e.,
 the one after the last one that was read.
 
-The following integer mask and quotation specifiers are recognised:
+#### Integer Mask and Quotation Specifiers
+
+Generally, specifying multiple identical mask and quotation specifiers
+or more than listed in the following list, like `~zzu` or `~hhhx`, is
+reserved for future use and should be avoided.  It is unspecified how
+the current library handles such format strings.
 
  - `h` applies the mask `0xffff` to an integer, then zero extends unsigned
    values, or sign extends signed values.
@@ -254,7 +284,10 @@ from C make no sense and are not recognised (nor ignored), because
 type casting control in varargs is not needed here due to the
 type-safety.
 
-The following conversion letters are recognised:
+#### Conversions
+
+The format specifiers is terminated by a single conversion character
+from the following list.
 
  - `s` prints anything in default notation (mnemonic: 'standard').
    `s` is used by standard C `printf` for strings, and CommonLisp
@@ -286,9 +319,12 @@ The following conversion letters are recognised:
    'a'..'z','2'..'7'.  `e` uses lower case digits and prefix,
    `E` uses upper case.
 
- - `p` prints like `#x`, and for any pointer, including strings,
+ - `p` prints like `x`, toggles the `#` flag, and for any strings,
    prints the pointer value instead of the contents.  Note that
    it also prints signed numbers: `va_print("~p",-5)` prints `-0x5`.
+
+   Note that `~#p` prints pointers like `~x` and `~p` prints like
+   `~#x`, i.e., the `#` flag is toggled.
 
  - `c` prints integers (but not pointers) as characters, like a
    one-element string.  Note that the NUL character is not printed,
@@ -304,23 +340,24 @@ The following conversion letters are recognised:
    arguments never print, and never consume a `~` format, but
    always just return the stream error.
 
+ - `~` prints `~` characters.  By default, one is printed.  The
+   width gives the number of tildes, e.g. `~5~` prints `~~~~~`,
+   and `~0~` prints nothing.  `~*~` reads the width from an
+   argument.  The use of precision and justification flags is
+   reserved for future use, and it is unspecified how the library
+   handles them.
+
  - any letter mentioned above in lowercase only also exists in
    uppercase, and then prints whatever is usually printed in lowercase
    in uppercase, like like hexadecimal digits or numeric base prefixes
    like `0B` or `0X`.
 
- - any letter not mentioned above is reserved for future use.
-   If used, U+FFFC, the object replacement character, is output
-   and the argument is skipped.
-   Unfortunately, no compile time error can be generated.
+ - any format character not mentioned above is reserved for future
+   use.  If used, the argument is skipped, and the `VA_E_FORMAT` error
+   is set in the stream.
 
- - any combination of letter and type not mentioned above prints in
-   default notation `~s`.
-
- - `~` prints `~` characters.  By default, one is printed.  The
-   width gives the number of tildes, e.g. `~5~` prints `~~~~~`,
-   and `~0~` prints nothing.  `~*~` reads the width from an
-   argument.  The precision and justification flags are ignored.
+ - any combination of format character and type not mentioned above
+   prints in default notation.
 
 Function parameters behind the last format specifier in the format
 string are printed in default notation after everything that is
@@ -633,8 +670,8 @@ Examples:
 - `~b` and `~B` print binary, with optional `0b` or `0B` prefix.
 
 - `~e` and `~E` print integers in Base32, with optional `0e` or `0E`
-  prefix.  This could be handy for writing error codes: 0eINVAL,
-  0eAGAIN, 0eIO, ...
+  prefix.  This could be handy for writing error codes: 0EINVAL,
+  0EAGAIN, 0EIO, ...
 
 - any meaningless format specifier (=letter) defaults to 'print in
   natural default form'.  It is recommended to use `~s` for default
@@ -675,9 +712,6 @@ Examples:
 - for strings, the width counts the number of characters that are
   printed, before encoding them in the output encoding.  This
   includes all characters needed for quotation.
-
-- If no format specifier is found, values are printed at the end of
-  the format string in default notation (as if printed with ~s).
 
 ## Restrictions
 
@@ -825,26 +859,30 @@ Examples:
 
 Open a file with computed name, up to a fixed path length:
 
-    #include <va_print/char.h>
+```c
+#include <va_print/char.h>
 
-    FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
-    {
-        return fopen(va_nprintf(80, "~s/~s~.s", dir, file, suffix), "rt");
-    }
+FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
+{
+    return fopen(va_nprintf(80, "~s/~s~.s", dir, file, suffix), "rt");
+}
+```
 
 The same with error checking about truncated string or en- or decoding
 errors:
 
-    FILE *open_text_rd(
-        char const *dir, char const *file, unsigned suffix)
-    {
-        va_error_t e;
-        char *fn = va_nprintf(80, "~s/~s~.s", dir, file, suffix, &e);
-        if (e.code != VA_E_OK) {
-            return NULL;
-        }
-        return fopen(fn, "rt");
+```c
+FILE *open_text_rd(
+    char const *dir, char const *file, unsigned suffix)
+{
+    va_error_t e;
+    char *fn = va_nprintf(80, "~s/~s~.s", dir, file, suffix, &e);
+    if (e.code != VA_E_OK) {
+        return NULL;
     }
+    return fopen(fn, "rt");
+}
+```
 
 Using _Generic reduces the number of functions and macros, too, e.g.,
 you can use 8-bit, 16-bit, or 32-bit characters seamlessly.  The
@@ -852,43 +890,49 @@ following uses UTF-16 as a parameter, but calls fopen() with an UTF-8
 string.  The only change is the parameter type.  Just for fun, let's
 use an UTF-32 format string:
 
-    FILE *open_text_rd(
-        char16_t const *dir, char16_t const *file, unsigned suffix)
-    {
-        va_error_t e;
-        char *fn = va_nprintf(80, U"~s/~s~.s", dir, file, suffix, &e);
-        if (e.code != VA_E_OK) {
-            return NULL;
-        }
-        return fopen(fn, "rt");
+```c
+FILE *open_text_rd(
+    char16_t const *dir, char16_t const *file, unsigned suffix)
+{
+    va_error_t e;
+    char *fn = va_nprintf(80, U"~s/~s~.s", dir, file, suffix, &e);
+    if (e.code != VA_E_OK) {
+        return NULL;
     }
+    return fopen(fn, "rt");
+}
+```
 
 This can also be done by creating a dynamically allocated string with
 `va_alloc()`, which uses the system's `realloc()` and `free()` internally:
 
-    #include <va_print/malloc.h>
+```c
+#include <va_print/malloc.h>
 
-    FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
-    {
-        char *fn = va_mprintf(va_alloc, "~s/~s~.s", dir, file, suffix);
-        if (fn == NULL) {
-            return NULL;
-        }
-        FILE *f = fopen(fn, "rt");
-        free(fn);
-        return f;
+FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
+{
+    char *fn = va_mprintf(va_alloc, "~s/~s~.s", dir, file, suffix);
+    if (fn == NULL) {
+        return NULL;
     }
+    FILE *f = fopen(fn, "rt");
+    free(fn);
+    return f;
+}
+```
 
 Using VLA, do the same with arbitrary length by pre-computing the length
 using va_lprintf():
 
-    #include <va_print/len.h>
+```c
+#include <va_print/len.h>
 
-    FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
-    {
-        char n[va_lprintf("~s/~s~.s", dir, file, suffix)];
-        return fopen(va_szprintf(n, "~s/~s~.s", dir, file, suffix), "rt");
-    }
+FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
+{
+    char n[va_lprintf("~s/~s~.s", dir, file, suffix)];
+    return fopen(va_szprintf(n, "~s/~s~.s", dir, file, suffix), "rt");
+}
+```
 
 ## How Does This Work?
 
@@ -896,17 +940,21 @@ The main idea is to use macro magic (both standard C99 and some extensions
 from gcc, like allowing `__VA_ARGS__` to be empty etc.) to convert the
 printf calls:
 
-    x_printf(format)
-    x_printf(format, arg1)
-    x_printf(format, arg1, arg2)
-    ...
+```c
+x_printf(format);
+x_printf(format, arg1);
+x_printf(format, arg1, arg2);
+...
+```
 
 Into a recursive call sequence:
 
-    init(STREAM(...), format);
-    render(init(STREAM(...), format), arg1)
-    render(render(init(&STREAM(...), format), arg1), arg2);
-    ...
+```c
+init(&STREAM(...), format);
+render(init(&STREAM(...), format), arg1)
+render(render(init(&STREAM(...), format), arg1), arg2);
+...
+```
 
 The `STREAM()` is a temporary stream object, a compound literal, that
 is used for state information when parsing the format string, and for

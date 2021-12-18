@@ -85,6 +85,18 @@ extern va_stream_t *va_xprintf_char_pp_utf8(
     va_stream_t *,
     char **);
 
+extern va_stream_t *va_xprintf_last_char_p_utf8(
+    va_stream_t *,
+    char const *x);
+
+extern va_stream_t *va_xprintf_last_char_const_pp_utf8(
+    va_stream_t *,
+    char const **);
+
+extern va_stream_t *va_xprintf_last_char_pp_utf8(
+    va_stream_t *,
+    char **);
+
 /* ********************************************************************** */
 /* epilogue */
 

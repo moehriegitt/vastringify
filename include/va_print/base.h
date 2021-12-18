@@ -30,6 +30,13 @@ extern "C" {
 #define VA_BLOCK_STMT(A) do{ A ;}while(0)
 #define VA_BLOCK_EXPR(A) __extension__({ A ;})
 
+/* macro utils */
+#define VA_NIX
+#define VA_EAT(...)
+#define VA_ECHO(...)    __VA_ARGS__
+#define VA_NOC(...)     ,##__VA_ARGS__
+#define VA_PAR          ()
+
 /* deep evaluation */
 #define VA_EXP1(...)   __VA_ARGS__
 #define VA_EXP2(...)   VA_EXP1(VA_EXP1(VA_EXP1(VA_EXP1(__VA_ARGS__))))
@@ -37,10 +44,11 @@ extern "C" {
 #define VA_EXP(...)    VA_EXP3(VA_EXP3(VA_EXP3(VA_EXP3(__VA_ARGS__))))
 
 /* optionality */
-#define VA_NIX
-#define VA_PAR ()
 #define VA_P(X,...)    X
 #define VA_F(...)      VA_H
+
+#if 0
+/* FIXME: obsolete, delete; improved version below */
 #define VA_O3(...)     VA_P(__VA_ARGS__)
 #define VA_O2(SUB,...) VA_O3(SUB ## __VA_ARGS__)
 #define VA_O1(SUB,...) VA_O2(SUB,__VA_ARGS__)
@@ -60,14 +68,32 @@ extern "C" {
 #define VA_RECB(FUN,ARG,...)  \
     VA_O(VA_REC,##__VA_ARGS__) VA_PAR (FUN,ARG,##__VA_ARGS__)
 
-#define VA_NOC(...) ,##__VA_ARGS__
 #define VA_REC(FUN,ARG,...)  \
     VA_EXP(VA_RECB VA_NIX (FUN,ARG VA_NOC(__VA_ARGS__)))
+#endif
+
+/* optionality */
+#define VA_SUBVA_H(Z,N)  Z
+#define VA_SUBVA_F(Z,N)  N
+#define VA_OPT3(...)     VA_P(__VA_ARGS__)
+#define VA_OPT2(...)     VA_OPT3(VA_SUB ## __VA_ARGS__)
+#define VA_OPT1(Z,N,...) VA_OPT2(__VA_ARGS__) (Z,N)
+#define VA_OPT0(...)     __VA_ARGS__
+#define VA_OPT(Z,N,...)  VA_OPT0(VA_OPT1 VA_NIX (Z,N, VA_F VA_NOC(__VA_ARGS__) ()))
+
+/* recursive expressions*/
+#define VA_REU0B(F,A,...)   A
+#define VA_REU1B(F,A,X,...) VA_REUA(F,F VA_NIX (VA_OPT(0,1,__VA_ARGS__),A,X),__VA_ARGS__)
+#define VA_REU0()           VA_REU0B
+#define VA_REU1()           VA_REU1B
+#define VA_REUA(F,A,...)    VA_OPT(VA_REU0,VA_REU1,__VA_ARGS__) VA_PAR (F,A,__VA_ARGS__)
+
+#define VA_REU(F,I,A,...)   VA_EXP(VA_REUA(F,I VA_NIX (VA_OPT(0,1,__VA_ARGS__),A),__VA_ARGS__))
 
 /**
  * Compound literal of type va_stream_t.
  */
-#define VA_STREAM(F) ((va_stream_t){ F,{0,0},0,1,0,0 })
+#define VA_STREAM(F) ((va_stream_t){ F,{0,0},0,0,0,0 })
 
 /** Iterator for extracting single codepoint data */
 #define VA_READ_ITER(TAKE,DATA) \
@@ -129,9 +155,6 @@ extern "C" {
 
 /** Unicode replacement character */
 #define VA_U_REPLACEMENT 0xfffd
-
-/** Unicode object replacement character */
-#define VA_U_OBJECT 0xfffc
 
 /** Unicode maximum codepoint */
 #define VA_U_MAX 0x10ffff
@@ -315,6 +338,14 @@ typedef struct {
  * the end of the statically sized array, or the file printer had an error, or
  * an allocation failed in realloc() in va_mprintf(). */
 #define VA_E_TRUNC 4
+
+/**
+ * There was an syntactic error in a format specification. */
+#define VA_E_FORMAT 5
+
+/**
+ * Too many or too few arguments were given for the format string. */
+#define VA_E_ARGC 6
 
 /* ********************************************************************** */
 /* epilogue */

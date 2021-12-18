@@ -97,3 +97,27 @@ extern va_stream_t *va_xprintf_char32_pp_utf32(
 {
     return va_xprintf_char32_const_pp_utf32(s, (char32_t const **)x);
 }
+
+extern va_stream_t *va_xprintf_last_char32_p_utf32(
+    va_stream_t *s,
+    char32_t const *x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_char32_p_utf32(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_char32_const_pp_utf32(
+    va_stream_t *s,
+    char32_t const **x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_char32_const_pp_utf32(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_char32_pp_utf32(
+    va_stream_t *s,
+    char32_t **x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_char32_pp_utf32(s,x);
+}

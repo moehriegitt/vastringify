@@ -76,6 +76,7 @@ extern va_stream_t foo(va_stream_t);
 
 int main(void)
 {
+    va_error_t e __unused = {0};
     int a __unused = -547;
     unsigned b __unused = 1023;
     void *p __unused = (void*)0x17;
@@ -127,7 +128,7 @@ int main(void)
     TEST_IUSCP("Foo: X=~i, [~#-8x], ~#s ~c ~p", a, 1239, "foo", 'a', p);
     TEST_IUSCP("Foo: X=~i, [~#-08x], ~-8s ~c ~p", a, 1239, "foo", 'a', p);
     TEST_IUSCP("Foo: X=~i, [~#-012x], ~s ~.2c ~p", a, 1239, "foo", 'a', p);
-    TEST_IUSCP("Foo: X=~i, [~#-0x], ~s ~8c ~#p", a, 1239, "foo", 'a', p);
+    TEST_IUSCP("Foo: X=~i, [~#-0x], ~s ~8c ~p", a, 1239, "foo", 'a', p);
     TEST_IUSCP("Foo: X=~i, [~#-x], ~s ~#c ~p", a, 1239, "foo", 'a', p);
     TEST_IUSCP("Foo: X=~i, [~x], ~s ~c ~p", a, 1239, "foo", 'a', p);
     TEST_IUSCP("Foo: X=~+i, [~#9o], ~s ~c ~p", 15, 123239, "foo", 'a', p);
@@ -202,7 +203,6 @@ int main(void)
     PRINTF1("~d", "-1", (signed char)-1);
     PRINTF1("~d", "-1", (signed short)-1);
 
-    va_error_t e = {0};
     PRINTF1("~0qc", "'\\ufffd\\ufffd\\ufffd'", "\xe0\x90\x80", &e);
     assert(e.code == VA_E_DECODE); /* from UTF-8 input decoding */
     PRINTF1("~0qc", "'\\ufffd'", 0xd97fu, &e);
@@ -218,7 +218,8 @@ int main(void)
     PRINTF0("\"fo\\no\" ~#x", "~qs ~=p", (size_t)foo, foo);
     PRINTF0("~#x \"fo\\no\"", "~p ~=qs", (size_t)foo, foo);
 
-    va_printf("~u;;1016;~x", __LINE__, 16, 16); va_printf("\n");
+    /* more args than format string? those are ignored*/
+    va_printf("~u;;10;~x", __LINE__, 16, 16); va_printf("\n");
 
     char const *abc = "abc";
     PRINTF2("aaba5", "~.1s~=.2s~=.1s~u", &abc, 5);
@@ -304,6 +305,10 @@ int main(void)
 
     PRINTF2("aNULLb", "a~qsb", (char *)NULL, &e);
     assert(e.code == VA_E_OK);
+    PRINTF2("aNULLb", "a~qs~qsb", (char *)NULL, &e);
+    assert(e.code == VA_E_ARGC);
+    PRINTF2("ab", "ab", (char *)NULL, &e);
+    assert(e.code == VA_E_ARGC);
 
     PRINTF2("anullb", "a~Qsb", (char *)NULL, &e);
     assert(e.code == VA_E_OK);
@@ -448,15 +453,133 @@ int main(void)
 
     PRINTF2("\"\\ufffd\"", "~0qa", u"\xd801");
 
-    PRINTF2("a\ufffcb7c", "a~jb~sc", 6, 7);
-    PRINTF2("a\ufffcb7c", "a~jb~sc", "6", 7);
-    PRINTF2("a\ufffcb7c", "a~jb~sc", NULL, 7);
+    PRINTF2("ab7c", "a~jb~sc", 6, 7, &e);
+    assert(e.code == VA_E_FORMAT);
+    PRINTF2("ab7c", "a~jb~sc", "6", 7, &e);
+    assert(e.code == VA_E_FORMAT);
+    PRINTF2("ab7c", "a~jb~sc", NULL, 7, &e);
+    assert(e.code == VA_E_FORMAT);
 
     PRINTF2("a~b7", "a~~b~s", 7);
     PRINTF2("a~~~~b7", "a~4~b~s", 7);
     PRINTF2("ab7", "a~0~b~s", 7);
     PRINTF2("a~~~~~b7", "a~*~b~s", 5, 7);
     PRINTF2("ab7", "a~*~b~s", 0, 7);
+
+    PRINTF2("a0x10b", "a~pb", 16);
+    PRINTF2("a10b", "a~#pb", 16);
+
+    va_stream_file_t *fbu = &VA_STREAM_FILE(stdout);
+    va_iprintf(fbu, "~u;;", __LINE__);
+    va_iprintf(fbu, "a10b;");
+    va_iprintf(fbu, "a~#pb\n", 16);
+
+    printf("\n");
+
+    char bu[30];
+    va_stream_char_p_t *sbu = &VA_STREAM_CHARP(bu, sizeof(bu));
+    va_iprintf(sbu, "~u;;", __LINE__);
+    va_iprintf(sbu, "a10b;");
+    va_iprintf(sbu, "a~#pb\n", 16);
+    printf("%s", bu);
+    printf("\n");
+
+    /* check that string is initialised if no arg is given and no char is written */
+    char s[10] = "foo";
+    va_szprintf(s, "");
+    PRINTF2("ab", "a~sb", s); va_printf("\n");
+
+    /* check that string is initialised if only error is requested */
+    strcpy(s, "foo");
+    va_szprintf(s, "", &e);
+    PRINTF2("ab", "a~sb", s); va_printf("\n");
+
+    /* check that string is terminated if last is err */
+    PRINTF2("a5b", "a~s~sb", 5, &e); va_printf("\n");
+    assert(e.code == VA_E_ARGC);
+
+    /* check that normal print works */
+    va_printf("M0a;;a56b;a~s~sb", (int)5, (int)6); printf("\n");
+    va_printf("M0b;;a56b;a~s~sb", (char)5, (char)6); printf("\n");
+    va_printf("M0c;;a56b;a~s~sb", (signed char)5, (signed char)6); printf("\n");
+    va_printf("M0d;;a56b;a~s~sb", (short)5, (short)6); printf("\n");
+    va_printf("M0e;;a56b;a~s~sb", (long)5, (long)6); printf("\n");
+    va_printf("M0f;;a56b;a~s~sb", (long long)5, (long long)6); printf("\n");
+
+    va_printf("M0g;;a56b;a~s~sb", (unsigned int)5, (unsigned int)6); printf("\n");
+    va_printf("M0h;;a56b;a~s~sb", (unsigned char)5, (unsigned char)6); printf("\n");
+    va_printf("M0i;;a56b;a~s~sb", (unsigned short)5, (unsigned short)6); printf("\n");
+    va_printf("M0j;;a56b;a~s~sb", (unsigned long)5, (unsigned long)6); printf("\n");
+    va_printf("M0k;;a56b;a~s~sb", (unsigned long long)5, (unsigned long long)6); printf("\n");
+
+    va_printf("M0l;;a56b;a~s~sb", "5", "6"); printf("\n");
+    va_printf("M0m;;a56b;a~s~sb", u"5", u"6"); printf("\n");
+    va_printf("M0n;;a56b;a~s~sb", U"5", U"6"); printf("\n");
+
+    va_printf("M0o;;a56b;a~s~sb", (void*)5, (void*)6); printf("\n");
+
+    va_printf("M4a;;a5b;a~sb", (int)5); printf("\n");
+    va_printf("M4b;;a5b;a~sb", (char)5); printf("\n");
+    va_printf("M4c;;a5b;a~sb", (signed char)5); printf("\n");
+    va_printf("M4d;;a5b;a~sb", (short)5); printf("\n");
+    va_printf("M4e;;a5b;a~sb", (long)5); printf("\n");
+    va_printf("M4f;;a5b;a~sb", (long long)5); printf("\n");
+
+    va_printf("M4g;;a5b;a~sb", (unsigned int)5); printf("\n");
+    va_printf("M4h;;a5b;a~sb", (unsigned char)5); printf("\n");
+    va_printf("M4i;;a5b;a~sb", (unsigned short)5); printf("\n");
+    va_printf("M4j;;a5b;a~sb", (unsigned long)5); printf("\n");
+    va_printf("M4k;;a5b;a~sb", (unsigned long long)5); printf("\n");
+
+    va_printf("M4l;;a5b;a~sb", "5"); printf("\n");
+    va_printf("M4m;;a5b;a~sb", u"5"); printf("\n");
+    va_printf("M4n;;a5b;a~sb", U"5"); printf("\n");
+
+    va_printf("M4o;;a5b;a~sb", (void*)5); printf("\n");
+
+    /* check that superfluous args are skipped */
+    va_printf("M3a;;a5b;a~sb", (int)5, (int)6); printf("\n");
+    va_printf("M3b;;a5b;a~sb", (char)5, (char)6); printf("\n");
+    va_printf("M3c;;a5b;a~sb", (signed char)5, (signed char)6); printf("\n");
+    va_printf("M3d;;a5b;a~sb", (short)5, (short)6); printf("\n");
+    va_printf("M3e;;a5b;a~sb", (long)5, (long)6); printf("\n");
+    va_printf("M3f;;a5b;a~sb", (long long)5, (long long)6); printf("\n");
+
+    va_printf("M3g;;a5b;a~sb", (unsigned int)5, (unsigned int)6); printf("\n");
+    va_printf("M3h;;a5b;a~sb", (unsigned char)5, (unsigned char)6); printf("\n");
+    va_printf("M3i;;a5b;a~sb", (unsigned short)5, (unsigned short)6); printf("\n");
+    va_printf("M3j;;a5b;a~sb", (unsigned long)5, (unsigned long)6); printf("\n");
+    va_printf("M3k;;a5b;a~sb", (unsigned long long)5, (unsigned long long)6); printf("\n");
+
+    va_printf("M3l;;a5b;a~sb", "5", "6"); printf("\n");
+    va_printf("M3m;;a5b;a~sb", u"5", u"6"); printf("\n");
+    va_printf("M3n;;a5b;a~sb", U"5", U"6"); printf("\n");
+
+    va_printf("M3o;;a5b;a~sb", (void*)5, (void*)6); printf("\n");
+
+    /* check that format string is fully read if no arg is given */
+    va_printf("M1;;abc;ab~uc"); va_printf("\n");
+
+    /* check that last arg printer parses to end of format string */
+    va_printf("M2a;;a5c;a~u~uc", (int)5); va_printf("\n");
+    va_printf("M2b;;a5c;a~u~uc", (char)5); va_printf("\n");
+    va_printf("M2c;;a5c;a~u~uc", (signed char)5); va_printf("\n");
+    va_printf("M2d;;a5c;a~u~uc", (short)5); va_printf("\n");
+    va_printf("M2e;;a5c;a~u~uc", (long)5); va_printf("\n");
+    va_printf("M2f;;a5c;a~u~uc", (long long)5); va_printf("\n");
+
+    va_printf("M2g;;a5c;a~u~uc", (unsigned int)5); va_printf("\n");
+    va_printf("M2h;;a5c;a~u~uc", (unsigned char)5); va_printf("\n");
+    va_printf("M2i;;a5c;a~u~uc", (unsigned short)5); va_printf("\n");
+    va_printf("M2j;;a5c;a~u~uc", (unsigned long)5); va_printf("\n");
+    va_printf("M2k;;a5c;a~u~uc", (unsigned long long)5); va_printf("\n");
+
+    va_printf("M2l;;a5c;a~u~uc", "5"); va_printf("\n");
+    va_printf("M2m;;a5c;a~u~uc", u"5"); va_printf("\n");
+    va_printf("M2n;;a5c;a~u~uc", U"5"); va_printf("\n");
+
+    va_printf("M2o;;a5c;a~u~uc", (void*)5); va_printf("\n");
+
 #endif
 
     return 0;

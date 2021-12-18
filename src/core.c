@@ -338,8 +338,9 @@ static void render_iter_algo(va_stream_t *s, va_read_iter_t *iter)
     }
 }
 
-static void render_iter(va_stream_t *s, va_read_iter_t *iter)
+static void render_iter(va_stream_t *s, va_read_iter_t *iter, void const *start)
 {
+    iter->cur = start;
     switch (VA_BGET(s->opt, VA_OPT_MODE)) {
     case VA_MODE_TYPE:
         render_rawstr(s, iter->vtab->type);
@@ -545,7 +546,6 @@ static void render_ull(va_stream_t *s, unsigned long long x, unsigned sz)
     switch (VA_BGET(s->opt, VA_OPT_SIZE)) {
     case 1: x = (unsigned short)x; break;
     case 2: x = (unsigned char)x; break;
-    case 3: x &= 0xf; break;
     }
 
     if (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR) {
@@ -613,7 +613,7 @@ static unsigned iter_take_pat(va_stream_t *s, va_read_iter_t *iter)
 
 /**
  * Returns non-0 iff the same value should be printed again. */
-static bool parse_format(va_stream_t *s)
+static unsigned parse_format(va_stream_t *s)
 {
     va_read_iter_t iter[1] = { s->pat };
 
@@ -621,21 +621,18 @@ again:;
     unsigned c = iter_take(s, iter, NULL);
     /* stay at end of string, regardless of STATE */
     if (c == 0) {
-        s->width = 0;
-        s->prec = VA_PREC_NONE;
-        s->opt &= VA_OPT_RESET;
-        return 0;
+        goto end_of_format;
     }
 
-    if (VA_BGET(s->opt, VA_OPT_STATE) == 0) {
+    if (VA_BGET(s->opt, VA_OPT_STATE) <= VA_STATE_ARG) {
         s->width = 0;
         s->prec = VA_PREC_NONE;
-        s->opt &= VA_OPT_RESET;
+        s->opt &= VA_OPT_RESET_ARG;
 
         /* print part between format specifiers */
         for (;;) {
             if (c == 0) {
-                return 0;
+                goto end_of_format;
             }
             if (c == VA_SIGIL) {
                 c = iter_take_pat(s, iter);
@@ -682,7 +679,7 @@ end_of_flags:
         if (c == '*') {
             s->width = 0;
             s->pat = *iter;
-            return 0;
+            goto ast_arg;
         }
         if ((c >= '1') && (c <= '9')) {
             s->width = c - '0';
@@ -703,7 +700,7 @@ end_of_flags:
             c = iter_take_pat(s, iter);
             if (c == '*') {
                 s->pat = *iter;
-                return 0;
+                goto ast_arg;
             }
             while ((c >= '0') && (c <= '9')) {
                 s->prec = (s->prec * 10) + c - '0';
@@ -713,7 +710,7 @@ end_of_flags:
     }
 
     if (VA_BGET(s->opt, VA_OPT_STATE) == VA_STATE_PREC) {
-        VA_BSET(s->opt, VA_OPT_STATE, 0);
+        VA_BSET(s->opt, VA_OPT_STATE, VA_STATE_ARG);
 
         /* parse sizes and quotation */
         for(;;) {
@@ -721,7 +718,12 @@ end_of_flags:
             default:
                 goto end_of_size;
             case 'h':
-                VA_BSET(s->opt, VA_OPT_SIZE, VA_BGET(s->opt, VA_OPT_SIZE) + 1);
+                if (VA_BGET(s->opt, VA_OPT_SIZE) >= 2) {
+                    va_stream_set_error(s, VA_E_FORMAT);
+                }
+                else {
+                    VA_BSET(s->opt, VA_OPT_SIZE, VA_BGET(s->opt, VA_OPT_SIZE) + 1);
+                }
                 break;
             case 'z':
                 VA_BSET(s->opt, VA_OPT_SIGN, VA_SIGN_ZEXT);
@@ -747,7 +749,7 @@ end_of_size:
         case 'q': case 'Q':
         case 'k': case 'K':
         default:
-            render(s, VA_U_OBJECT);
+            va_stream_set_error(s, VA_E_FORMAT);
             VA_BSET(s->opt, VA_OPT_STATE, VA_STATE_SKIP);
             break;
 
@@ -791,7 +793,7 @@ end_of_size:
         case 'p': case 'P':
             VA_BSET(s->opt, VA_OPT_MODE, VA_MODE_PTR);
             VA_BSET(s->opt, VA_OPT_BASE, 16);
-            s->opt |= VA_OPT_VAR;
+            s->opt ^= VA_OPT_VAR;
             break;
         case 't': case 'T':
             VA_BSET(s->opt, VA_OPT_MODE, VA_MODE_TYPE);
@@ -815,9 +817,29 @@ end_of_size:
     if (s->width == VA_WIDTH_NONE) {
         s->width = 0;
     }
-    assert((VA_BGET(s->opt, VA_OPT_STATE) == 0) ||
+    assert((VA_BGET(s->opt, VA_OPT_STATE) == VA_STATE_ARG) ||
            (VA_BGET(s->opt, VA_OPT_STATE) == VA_STATE_SKIP));
-    return s->opt & VA_OPT_EQUAL ? 1 : 0;
+    /* if there is a '=' option, repeat printing */
+    if (s->opt & VA_OPT_EQUAL) {
+        return 1;
+    }
+
+ast_arg:
+    /* if there are no more args, eat up the whole format string */
+    if (s->opt & VA_OPT_LAST) {
+        va_stream_set_error(s, VA_E_ARGC);
+        return 2;
+    }
+    /* exit printer loop, i.e., read next arg */
+    return 0;
+
+end_of_format:
+    s->width = 0;
+    s->prec = VA_PREC_NONE;
+    s->opt &= VA_OPT_RESET_END;
+    VA_BSET(s->opt, VA_OPT_STATE, VA_STATE_SKIP);
+    /* exit printer loop at end of string */
+    return 0;
 }
 
 static bool set_ast(va_stream_t *s, long long x)
@@ -836,30 +858,48 @@ static bool set_ast(va_stream_t *s, long long x)
         return 0;
 
     case VA_STATE_SKIP:
-        VA_BSET(s->opt, VA_OPT_STATE, 0);
+        va_stream_set_error(s, VA_E_ARGC);
+        VA_BSET(s->opt, VA_OPT_STATE, VA_STATE_ARG);
         return 0;
     }
 
     return 1;
 }
 
+static void ensure_init(va_stream_t *s)
+{
+    /* init */
+    if (s->vtab->init != NULL) {
+        s->vtab->init(s);
+    }
+
+    /* first format */
+    if (VA_BGET(s->opt, VA_OPT_STATE) == VA_STATE_INIT) {
+        parse_format(s);
+    }
+}
+
+#define RENDER_LOOP(s, astval, render) \
+    do{ \
+        ensure_init(s); \
+        unsigned u; \
+        do { \
+            if (set_ast(s, astval)) { \
+                render; \
+            } \
+            while ((u = parse_format(s)) >= 2) {} \
+        } while (u); \
+    }while(0)
+
 static va_stream_t *xprintf_sll(va_stream_t *s, long long x, unsigned sz)
 {
-    do {
-        if (set_ast(s, x)) {
-            render_sll(s, x, sz);
-        }
-    } while (parse_format(s));
+    RENDER_LOOP(s, x, render_sll(s, x, sz));
     return s;
 }
 
 static va_stream_t *xprintf_ull(va_stream_t *s, unsigned long long x, unsigned sz)
 {
-    do {
-        if (set_ast(s, (long long)x)) {
-            render_ull(s, x, sz);
-        }
-    } while (parse_format(s));
+    RENDER_LOOP(s, (long long)x, render_ull(s, x, sz));
     return s;
 }
 
@@ -871,22 +911,13 @@ extern va_stream_t *va_xprintf_iter(
     va_read_iter_t *x)
 {
     void const *start = x->cur;
-    do {
-        x->cur = start;
-        if (set_ast(s, 0)) {
-            render_iter(s, x);
-        }
-    } while (parse_format(s));
+    RENDER_LOOP(s, 0, render_iter(s, x, start));
     return s;
 }
 
 extern va_stream_t *va_xprintf_ptr(va_stream_t *s, void const *x)
 {
-    do {
-        if (set_ast(s, 0)) {
-            render_ptr(s, x);
-        }
-    } while (parse_format(s));
+    RENDER_LOOP(s, 0, render_ptr(s, x));
     return s;
 }
 
@@ -952,23 +983,110 @@ extern va_stream_t *va_xprintf_char(va_stream_t *s, char x)
 
 extern va_stream_t *va_xprintf_error_t_p(va_stream_t *s, va_error_t *x)
 {
+    ensure_init(s);
     x->code = VA_BGET(s->opt, VA_OPT_ERR);
     VA_BSET(s->opt, VA_OPT_ERR, 0);
     return s;
 }
 
-extern va_stream_t *va_xprintf_init(
+extern va_stream_t *va_xprintf_last_schar(va_stream_t *s, signed char x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_schar(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_short(va_stream_t *s, short x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_short(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_sint(va_stream_t *s, int x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_sint(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_slong(va_stream_t *s, long x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_slong(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_sll(va_stream_t *s, long long x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_sll(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_uchar(va_stream_t *s, unsigned char x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_uchar(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_ushort(va_stream_t *s, unsigned short x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_ushort(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_uint(va_stream_t *s, unsigned int x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_uint(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_ulong(va_stream_t *s, unsigned long x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_ulong(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_ull(va_stream_t *s, unsigned long long x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_ull(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_ptr(va_stream_t *s, void const *x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_ptr(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_char(va_stream_t *s, char x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_char(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_iter(va_stream_t *s, va_read_iter_t *x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_iter(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_error_t_p(va_stream_t *s, va_error_t *x)
+{
+    ensure_init(s);
+    if (VA_BGET(s->opt, VA_OPT_STATE) != VA_STATE_SKIP) {
+        /* we're not reading anything, so there are too few arguments. */
+        va_stream_set_error(s, VA_E_ARGC);
+    }
+    s->opt |= VA_OPT_LAST;
+    parse_format(s);
+    return va_xprintf_error_t_p(s,x);
+}
+
+extern va_stream_t *va_xprintf_init_last(
     va_stream_t *s,
     void const *x,
     va_read_iter_vtab_t const *get_vtab)
 {
-    /* init */
-    s->pat = VA_READ_ITER(get_vtab, x);
-    if (s->vtab->init != NULL) {
-        s->vtab->init(s);
-    }
-
-    /* first format */
+    va_xprintf_init(s, x, get_vtab);
+    ensure_init(s);
+    s->opt |= VA_OPT_LAST;
     parse_format(s);
     return s;
 }

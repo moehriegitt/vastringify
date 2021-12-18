@@ -147,3 +147,27 @@ extern va_stream_t *va_xprintf_char16_pp_utf16(
 {
     return va_xprintf_char16_const_pp_utf16(s, (char16_t const **)x);
 }
+
+extern va_stream_t *va_xprintf_last_char16_p_utf16(
+    va_stream_t *s,
+    char16_t const *x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_char16_p_utf16(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_char16_const_pp_utf16(
+    va_stream_t *s,
+    char16_t const **x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_char16_const_pp_utf16(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_char16_pp_utf16(
+    va_stream_t *s,
+    char16_t **x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_char16_pp_utf16(s,x);
+}

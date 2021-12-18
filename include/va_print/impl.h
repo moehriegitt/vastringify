@@ -23,14 +23,17 @@ extern "C" {
 
 /* bit magic */
 
-#define VA_MASK_(S,M)  (M)
-#define VA_MASK(W)     (VA_MASK_ W)
+#define VA_MASK2(S,M)  (M)
+#define VA_MASK1(W)    (VA_MASK2 W)
+#define VA_MASK(W)     (VA_MASK1(W))
 
-#define VA_SHIFT_(S,M) (S)
-#define VA_SHIFT(W)    (VA_SHIFT_ W)
+#define VA_SHIFT2(S,M) (S)
+#define VA_SHIFT1(W)   (VA_SHIFT2 W)
+#define VA_SHIFT(W)    (VA_SHIFT1(W))
 
-#define VA_MASH_(S,M)  ((M) << (S))
-#define VA_MASH(W)     (VA_MASH_ W)
+#define VA_MASH2(S,M)  ((M) << (S))
+#define VA_MASH1(W)    (VA_MASH2 W)
+#define VA_MASH(W)     (VA_MASH1(W))
 
 #define VA_BGET(X,W)   (((X) >> VA_SHIFT(W)) & VA_MASK(W))
 #define VA_BPUT(X,W,V) ((((X) | VA_MASH(W)) ^ VA_MASH(W)) | ((V) << VA_SHIFT(W)))
@@ -74,8 +77,8 @@ extern "C" {
 #define VA_OPT_EQUAL  0x0010
 /** internal: simulate printing */
 #define VA_OPT_SIM    0x0020
-/** reserved */
-#define VA_OPT_X6     0x0040
+/** last argument: terminate format string reading */
+#define VA_OPT_LAST   0x0040
 /** reserved */
 #define VA_OPT_X7     0x0080
 
@@ -103,9 +106,11 @@ extern "C" {
 
 /* internal states for parsing format specifiers */
 #define VA_OPT_STATE   (13, 7U)
-#define VA_STATE_WIDTH 1 /* after the width or '*' */
-#define VA_STATE_PREC  2 /* after the prec or '.*' */
-#define VA_STATE_SKIP  3 /* next arg should be skipped */
+#define VA_STATE_INIT  0 /* before and after full scan of format string */
+#define VA_STATE_ARG   1 /* ready to print an argument */
+#define VA_STATE_WIDTH 2 /* after the width or '*' */
+#define VA_STATE_PREC  3 /* after the prec or '.*' */
+#define VA_STATE_SKIP  4 /* next arg should be skipped */
 
 /** quotation */
 #define VA_OPT_QUOTE   (16, 3U)
@@ -118,7 +123,7 @@ extern "C" {
 /** 'qq' modifier */
 #define VA_QUOTE_J     3
 
-/** size specifier mask: 'h', 'hh', or 'hhh' */
+/** size specifier mask: normal, 'h', or 'hh'*/
 #define VA_OPT_SIZE   (18, 3U)
 
 /** form (2..36) */
@@ -130,8 +135,11 @@ extern "C" {
 /** number of following error code units from the decoder: 0..3 */
 #define VA_OPT_EMORE  (29, 3U)
 
-/** mask of resetting print options, without resetting the error */
-#define VA_OPT_RESET  VA_EXP1(VA_MASH(VA_OPT_ERR))
+/** mask of resetting print options at end of string */
+#define VA_OPT_RESET_END VA_MASH(VA_OPT_ERR)
+
+/** mask of resetting print options at beginning of new argument */
+#define VA_OPT_RESET_ARG (VA_MASH(VA_OPT_ERR) | VA_OPT_LAST)
 
 /** mask for casting width */
 #define VA_WIDTH_MASK 0x7fffffff
@@ -150,11 +158,13 @@ extern "C" {
 /* ********************************************************************** */
 /* static inline functions */
 
+__attribute__((always_inline))
 static inline bool va_u_valid(unsigned c)
 {
     return ((c < VA_U_SURR_MIN) || (c > VA_U_SURR_MAX)) && (c <= VA_U_MAX);
 }
 
+__attribute__((always_inline))
 static inline void va_stream_set_error(va_stream_t *s, unsigned e)
 {
     if (VA_BGET(s->opt, VA_OPT_ERR) == 0) {

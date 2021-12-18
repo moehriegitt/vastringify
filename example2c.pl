@@ -31,21 +31,30 @@ for my $l (@c_in) {
         $s =~ s/\s+$//;
         print STDERR "DEBUG: section: $s\n";
         my $copy = 0;
+        my $in_code = 0;
         my $in_comment = 0;
         my $unique_id = 0;
-        for my $k (@md) {
+        LINE: for my $k (@md) {
             if ($copy && ($k =~ /^(\Q$copy\E)\s/)) {
                 $copy = 0;
             }
             if ($copy) {
-                if ($k =~ /^    (.*)$/) {
-                    $k = "$1\n";
+                if ($in_code && ($k =~ /^```/)) {
+                    $in_code = 0;
+                    next LINE;
+                }
+                if ($in_code || ($k =~ /^    (.*)$/)) {
+                    $k = "$1\n" if !$in_code;
                     $in_comment = 0;
                     for my $id (sort keys %enumerate) {
                         $k =~ s/\b\Q$id\E\b/$id$unique_id/g;
                     }
                 }
                 elsif ($k =~ /^$/) {
+                }
+                elsif ($k =~ /^```/) {
+                    $in_code = 1;
+                    next LINE;
                 }
                 else {
                     if (!$in_comment) {

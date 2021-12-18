@@ -93,7 +93,8 @@ all:
 
 all: \
     out/libvastringify.a \
-    out/test1.x
+    out/test1.x \
+    out/test3.x
 
 test: \
     out/test2-readme.o
@@ -105,6 +106,7 @@ out/test2-readme.c: \
 	perl ./example2c.pl $< $@
 
 out/test1.x: out/test1.o out/libvastringify.a
+out/test3.x: out/test3.o out/libvastringify.a
 
 LIB_O := \
     out/core.o \
@@ -179,10 +181,16 @@ clean:
 distclean: clean
 
 .PHONY: test
-test: all
+test: test1 test3
+
+.PHONY: test1
+test1: all
 	$(EXECUTE) ./out/test1.x > test.out
-	cat test.out
 	perl -n cmp.pl test.out
+
+.PHONY: test3
+test3: all
+	$(EXECUTE) ./out/test3.x
 
 .PHONY: stack
 stack: $(LIB_O:.o=.png) $(LIB_O:.o=.dot)  $(LIB_O:.o=.dot)
