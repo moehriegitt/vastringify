@@ -968,22 +968,23 @@ width or precision.
 The macro magic is called `VA_REC()`.  Additional to what is described
 above, it passes a first parameter to the `init()` and `render()`
 calls to show whether the call is the last one of the expression. This
-is done to be able to optimise the number of calls at the call site.
-You can try it with `gcc -E`:
+is done to be able to optimise the call site code generation, and to
+allow sane error handling if the number of format specifiers and
+arguments do not match.  You can try it with `gcc -E`:
 
 ```c
-VA_REC(render, init, stream)
-VA_REC(render, init, stream, a)
-VA_REC(render, init, stream, a, b)
+VA_REC(render, init, stream);
+VA_REC(render, init, stream, a);
+VA_REC(render, init, stream, a, b);
 ...
 ```
 
 This becomes:
 
 ```c
-init(0,stream)
-render(0, init(1,stream), a)
-render(0, render(1, init(1,stream), a), b)
+init(0,stream);
+render(0, init(1,stream), a);
+render(0, render(1, init(1,stream), a), b);
 ```
 
 The `init(0,...)` macro call is an extern function call that
