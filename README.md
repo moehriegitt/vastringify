@@ -638,8 +638,8 @@ char *c = va_axprintf(va_alloc, "foo~s", msg);
 free(c);
 ```
 
-For `char16_t` and `char32-t` output strings, there is `va_uasprintf`
-and `va_Uasprintf`, resp.  The allocator function will then be invoked
+For `char16_t` and `char32_t` output strings, there is `va_uaxprintf`
+and `va_Uaxprintf`, resp.  The allocator function will then be invoked
 with a `size==2` for `char16_t` and `size==4` for `char32_t`.
 
 It is also possible to create a stream for iterative printing.
@@ -685,11 +685,15 @@ are called `va_ufprintf` and `va_Ufprintf`, resp.
 
 The function `va_lprintf` returns the number of codepoints printed
 into an output stream.  This is the string length regardless of output
-encoding, i.e., this must not be used to calculate array sizes.
+encoding.
 
 ```c
 size_t cp_count = va_lprintf("foo~s", msg);
 ```
+
+This is not a good function for computing array sizes -- use the
+`va_zprint` family instead.
+
 
 ### Computing String Array Sizes
 
