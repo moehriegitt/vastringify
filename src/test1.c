@@ -649,10 +649,17 @@ int main(void)
     PRINTF2("ab", "~s", va_unprintf(4, "~.3s", "ab\U0010201ccdefg"));
     PRINTF2("0xf", "~s", va_unprintf(4, "~#zx", -1));
 
-    printf("%u;;1;%zu\n", __LINE__, va_zprintf(char,""));
-    printf("%u;;5;%zu\n", __LINE__, va_zprintf(char,"~#x",18));
-    printf("%u;;6;%zu\n", __LINE__, va_zprintf(char,"a~sb", "\u201c"));
-    printf("%u;;4;%zu\n", __LINE__, va_zprintf(char16_t,"a~sb", "\u201c"));
+    printf("%u;;1;%zu\n", __LINE__, va_zprintf(""));
+    printf("%u;;5;%zu\n", __LINE__, va_zprintf("~#x",18));
+    printf("%u;;6;%zu\n", __LINE__, va_gzprintf(char,"a~sb", "\u201c"));
+
+    printf("%u;;4;%zu\n", __LINE__, va_gzprintf(char16_t,"a~sb", "\u201c"));
+    printf("%u;;4;%zu\n", __LINE__, va_uzprintf("a~sb", "\u201c"));
+    printf("%u;;5;%zu\n", __LINE__, va_uzprintf("a~sb", "\U0010201c"));
+
+    printf("%u;;4;%zu\n", __LINE__, va_gzprintf(char32_t,"a~sb", "\u201c"));
+    printf("%u;;4;%zu\n", __LINE__, va_Uzprintf("a~sb", "\u201c"));
+    printf("%u;;4;%zu\n", __LINE__, va_Uzprintf("a~sb", "\U0010201c"));
 #endif
 
     return 0;

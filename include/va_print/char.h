@@ -88,62 +88,86 @@ extern "C" {
 #define va_sprintf(S,...) va_snprintf(S,va_countof(S),__VA_ARGS__)
 
 /**
- * Print into new char array up to a given length.
+ * Print into new chararacter array up to a given length.
  *
- * This generates a new compound literal char[N] and prints
+ * The character type is passed as the first argument \p Char.
+ *
+ * This generates a new compound literal Char[N] and prints
  * into it like va_snprintf().
  *
- * The required size can be determined with va_cprintf().
+ * The required size can be determined with va_gzprintf().
  *
- * This returns a char* pointer with the result.
+ * This returns a Char* pointer with the result.
  */
-#define va_nprintf(N,...) \
-    ((char*)(va_xprintf( \
-        &VA_STREAM_CHAR_P((char[N]){0}, N), __VA_ARGS__)->data))
+#define va_gnprintf(Char,N,...) \
+    ((Char*)(va_xprintf( \
+        &VA_STREAM_CHAR_P((Char[N]){0}, N), __VA_ARGS__)->data))
+
+/**
+ * Print into new char array up to a given length.
+ *
+ * This is equivalent to invoking va_gnprintf() with 'char'
+ * as the first argument.
+ */
+#define va_nprintf(...) va_gnprintf(char, __VA_ARGS__)
 
 /**
  * Print into new char16_t array up to a given length.
  *
- * This generates a new compound literal char16_t[N] and prints
- * into it like va_snprintf().
- *
- * The required size can be determined with va_ucprintf().
- *
- * This returns a char* pointer with the result.
+ * This is equivalent to invoking va_gnprintf() with 'char16_t'
+ * as the first argument.
  */
-#define va_unprintf(N,...) \
-    ((char16_t*)(va_xprintf( \
-        &VA_STREAM_CHAR_P((char16_t[N]){0}, N), __VA_ARGS__)->data))
+#define va_unprintf(...) va_gnprintf(char16_t, __VA_ARGS__)
 
 /**
  * Print into new char32_t array up to a given length.
  *
- * This generates a new compound literal char32_t[N] and prints
- * into it like va_snprintf().
- *
- * The required size can be determined with va_Ucprintf().
- *
- * This returns a char* pointer with the result.
+ * This is equivalent to invoking va_gnprintf() with 'char32_t'
+ * as the first argument.
  */
-#define va_Unprintf(N,...) \
-    ((char32_t*)(va_xprintf( \
-        &VA_STREAM_CHAR_P((char32_t[N]){0}, N), __VA_ARGS__)->data))
+#define va_Unprintf(...) va_gnprintf(char32_t, __VA_ARGS__)
 
 /**
- * Count the number of 'Char' needed to represent the output
- * string (mnemonic: siZe).
+ * Computes the 'Char[]' array element count needed to represent the output
+ * string (mnemonic: Generic siZe).
  *
  * This simulates printing like va_snprintf() and returns the number of
  * 'Char' typed elements that are needed to print the whole result.  The
  * resulting size can be used to allocate an array that fits
- * the resulting encoded string tightly.
- *
+ * the resulting encoded string tightly. *
  * Note: this returns the length of the string in bytes plus 1,
  * i.e., the needed array size including the NUL termination.
  */
-#define va_zprintf(Char, ...) \
+#define va_gzprintf(Char, ...) \
     VA_BLOCK_EXPR(va_xprintf( \
         &VA_STREAM_CHAR_P((Char*)NULL, -(size_t)2), __VA_ARGS__)->pos + 1)
+
+/**
+ * Computes the 'char[]' array element count needed to represent the output
+ * string (mnemonic: siZe).
+ *
+ * This is equivalent to invoking va_gzprintf() with 'char'
+ * as the first argument.
+ */
+#define va_zprintf(...) va_gzprintf(char, __VA_ARGS__)
+
+/**
+ * Computes the 'char16_t[]' array element count needed to represent the output
+ * string (mnemonic: u"" siZe).
+ *
+ * This is equivalent to invoking va_gzprintf() with 'char16_t'
+ * as the first argument.
+ */
+#define va_uzprintf(...) va_gzprintf(char16_t, __VA_ARGS__)
+
+/**
+ * Computes the 'char32_t[]' array element count needed to represent the output
+ * string (mnemonic: U"" siZe).
+ *
+ * This is equivalent to invoking va_gzprintf() with 'char32_t'
+ * as the first argument.
+ */
+#define va_Uzprintf(...) va_gzprintf(char32_t, __VA_ARGS__)
 
 /* ********************************************************************** */
 /* types */
