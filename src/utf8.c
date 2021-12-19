@@ -85,7 +85,6 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
     if (!iter_nth(&cx, iter, end, 1)) {
         return 0;
     }
-    assert(cx != 0);
     if ((cx & 0xc0) != 0x80) {
         /* not a continuation byte */
         goto error;
@@ -124,7 +123,6 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
     if (!iter_nth(&cx, iter, end, 2)) {
         return 0;
     }
-    assert(cx != 0);
     if ((cx & 0xc0) != 0x80) {
         VA_BSET(c0, VA_U_EMORE, 1); /* first byte was OK */
         goto error;
@@ -142,7 +140,6 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
     if (!iter_nth(&cx, iter, end, 3)) {
         return 0;
     }
-    assert(cx != 0);
     if ((cx & 0xc0) != 0x80) {
         VA_BSET(c0, VA_U_EMORE, 2); /* first two bytes were OK */
         goto error;

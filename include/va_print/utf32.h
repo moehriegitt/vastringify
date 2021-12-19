@@ -40,7 +40,7 @@ extern unsigned va_char32_p_take_utf32(
  *
  * This prints the U+0000 as 0x00000000.  Printing 0 is used to
  * initialise streams (e.g., to NUL terminate uninitialised arrays or
- * to malloc an initial string).
+ * to alloc an initial string).
  *
  * The UTF-32 sequence will be printed into s word by word using put(s,w).
  */

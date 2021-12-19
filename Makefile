@@ -117,13 +117,13 @@ LIB_O := \
     out/char_utf8.o \
     out/char_utf16.o \
     out/char_utf32.o \
-    out/malloc.o \
-    out/malloc16.o \
-    out/malloc32.o \
-    out/malloc_utf8.o \
-    out/malloc_utf16.o \
-    out/malloc_utf32.o \
-    out/malloc_compat.o \
+    out/alloc.o \
+    out/alloc16.o \
+    out/alloc32.o \
+    out/alloc_utf8.o \
+    out/alloc_utf16.o \
+    out/alloc_utf32.o \
+    out/alloc_compat.o \
     out/file.o \
     out/file16be.o \
     out/file16le.o \
@@ -186,6 +186,7 @@ test: test1 test3
 .PHONY: test1
 test1: all
 	$(EXECUTE) ./out/test1.x > test.out
+	cat test.out
 	perl -n cmp.pl test.out
 
 .PHONY: test3

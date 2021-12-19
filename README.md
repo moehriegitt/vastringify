@@ -70,7 +70,7 @@ Char *
 va_snprintf(Char *s, size_t n, Char const *format, ...);
 
 Char *
-va_szprintf(Char s[], Char const *format, ...);
+va_sprintf(Char s[], Char const *format, ...);
 
 char *
 va_nprintf(size_t n, Char const *format, ...);
@@ -82,19 +82,28 @@ char32_t *
 va_Unprintf(size_t n, Char const *format, ...);
 
 va_stream_charp_t
-VA_STREAM_CHARP(Char const *s, size_t n);
+VA_STREAM_CHAR_P(Char const *s, size_t n);
 
 
-#include <va_print/malloc.h>
+#include <va_print/alloc.h>
 
 char *
-va_mprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...);
+va_axprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...);
 
 char16_t *
-va_umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...);
+va_uaxprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...);
 
 char32_t *
-va_Umprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...);
+va_Uaxprintf(void *(*alloc)(void *, size_t, size_t), Char const *, ...);
+
+char *
+va_asprintf(Char const *, ...);
+
+char16_t *
+va_uasprintf(Char const *, ...);
+
+char32_t *
+va_Uasprintf(Char const *, ...);
 
 va_stream_vec_t
 VA_STREAM_VEC(void *(*alloc)(void *, size_t, size_t));
@@ -104,6 +113,9 @@ VA_STREAM_VEC16(void *(*alloc)(void *, size_t, size_t));
 
 va_stream_vec32_t
 VA_STREAM_VEC32(void *(*alloc)(void *, size_t, size_t));
+
+void *
+va_alloc(void *data, size_t nmemb, size_t size);
 
 
 #include <va_print/len.h>
@@ -247,11 +259,12 @@ number of raw code units read from the input string (not the number
 of converted code points, but the low-level number of elements
 in the string, so that non-NUL terminated arrays can be printed
 with their size passed as precision, even with multi-byte/multi-word
-encodings stored inside.  The input decoder will not read incomplete
-encodings at the end of limited strings, but will stop before.  If
-a pointer to a string pointer is passed, then the
-pointer will be updated so that it points to the next character, i.e.,
-the one after the last one that was read.
+encodings stored inside.
+
+The input decoder will not read incomplete encodings at the end of
+limited strings, but will stop before.  If a pointer to a string
+pointer is passed, then the pointer will be updated so that it points
+to the next character, i.e., the one after the last one that was read.
 
 #### Integer Mask and Quotation Specifiers
 
@@ -392,11 +405,29 @@ The following function parameter types are recognised:
    Unquoted, `NULL` prints empty and sets the `VA_E_NULL` error.
    Also see the section on quotation below.
 
+   If the input decoder encounters an incomplete UTF-8 sequence the
+   terminating `NUL` character, it will return the bytes of the
+   incomplete sequence as decoding errors.  However, if a precision,
+   i.e., maximum string size is specified, it will stop decoding
+   before the incomplete sequence without a decoding error.  This way,
+   strings can be printed in chunks without errors.  Using a pointer
+   to a string, the final string position, i.e., the first byte of the
+   incomplete sequence at the end, can be queried in order to start a
+   new string chunk with the incomplete sequence at the beginning,
+   followed by, hopefully, the missing bytes of the UTF-8 sequence
+   from the next chunk.
+
  - `char16_t *`, `char16_t const *`: 16-bit character strings or
    arrays.  The default encoding is UTF-16, which can be
    switched using `va_char16_p_decode`.
 
    Unquoted, `NULL` prints empty and sets the `VA_E_NULL` error.
+
+   If the input decoder encounters an high UTF-16 surrogate followed
+   by the terminating `NUL` character, it will return the high surrogate
+   as a decoding error.  However, if a precision, i.e., maximum string
+   size is specified, it will stop decoding before the high surrogate.
+   This can be used for chunked printing like with UTF-8.
 
  - `char32_t *`, `char32_t const *`: 32-bit character strings or
    arrays.  The default encoding is UTF-32, which can be
@@ -429,6 +460,155 @@ The following function parameter types are recognised:
  - anything else: is tried to be converted to a pointer and
    printed in hexadecimal encoding by default, i.e., in `~x`
    format.
+
+## Printing Into Fixed Size Arrays
+
+```c
+#include <va_print/char.h>
+```
+
+To print into an string of characters up to a given number of elements
+in the array, the following function can be used, and it returns the
+pointer to the string.  The string is always NUL terminated, i.e., the
+maximum string length is one less than the passed element count.
+
+```c
+char s[20];
+char *t = va_snprint(s, sizeof(s), "foo~s", 5);
+assert(s == t);
+```
+
+The target buffer's type may be 8, 16, or 32 bit characters -- no need
+to use a different function.  For anything but `char` buffers, use
+`va_countof()` for the array size, so that the number of elements, not
+the number of bytes, is used as the string size.
+
+
+```c
+char16_t s1[20];
+char16_t *t1 = va_snprintf(s1, va_countof(s), "foo~s", 5);
+
+char32_t s2[20];
+char32_t *s2 = va_snprintf(s2, va_countof(s), "foo~s", 5);
+```
+
+The `va_countof()` values is inferred when using `va_sprintf`. This
+is different from the standard C `sprintf` function, which unsafely
+assumes a sufficiently large string -- you cannot express that with
+this library, but you'd have to use `snprintf` with a large size
+instead.
+```c
+char s[20];
+char *t = va_sprintf(s, "foo~s", 5);
+```
+
+It is possible to print into a compound literal of a given
+size and return the pointer to that string.  In this case,
+no character array can be used to infer the string type,
+so it is encoded in the function name:
+```c
+char     *t1 = va_nprintf (20, "foo~s", 5);
+char16_t *t2 = va_unprintf(20, "foo~s", 5);
+char32_t *t3 = va_Unprintf(20, "foo~s", 5);
+```
+
+The stream for printing can also be generated separately and then used
+for iterative printing using `va_iprintf`.  The stream makes sure not
+to print past the end of the char array.
+
+```c
+char buff[20];
+va_stream_char_p_t stream = VA_STREAM_CHAR_P(buff, va_countof(buff));
+va_iprintf(&stream, "foo");
+va_iprintf(&stream, "bar ~u", 55);
+va_iprintf(&stream, "longer than the string, will be cropped");
+```
+
+There is a `stream.pos` counter for the current write index in the
+array, i.e., the string length of the encoded byte sequence.  `pos`
+increments up to `stream.size-1`, but no further (note that `size==0`
+is an illegal configuration, because then there is no space for NUL
+terminating the string).
+
+Creating a `va_stream_char_p_t` with the buffer equal to `NULL` is
+explicitly allowed.  Putting the bytes into a char array will then be
+inhibited.  The printer still increments `stream.pos` up to
+`stream.size-1`, so by this, `strnlen()` functionality can be
+implemented on the resulting string.  This is exactly how `va_zprintf`
+(mnemonic: `siZe`) works.
+
+To determine whether the stream was truncated, i.e., whether the
+buffer was too small for the print result, the stream's error code can
+be checked for the `VA_E_TRUNC` error code value after printing is
+done.
+
+```c
+va_error_t e;
+va_iprintf(&stream, "", &e);
+if (e.code != VA_E_OK) {
+    /* ... some stream error occurred ... */
+}
+```
+
+Alternatively, if you have a stream anyway, there is
+`va_stream_get_error()` that returns the stream's error code.
+
+```c
+if (va_stream_get_error(&stream) != VA_E_OK) {
+    /* ... some stream error occurred ... */
+}
+```
+
+Note that there is no `%n` equivalent format specifier for reading the
+printed length; use `stream.pos` instead.  Or use `va_zprintf` to
+compute the needed array size.
+
+There is also `va_lprintf` to count the length of the string, i.e.,
+the number of codepoints written, instead of the number of encoded
+bytes.
+
+## Printing Into Growing Vectors
+
+```c
+#include <va_print/alloc.h>
+```
+
+It is possible to print into a string that grows using a reallocation
+function.
+
+```c
+char *c = va_asprintf("foo~s", msg);
+...
+free(c);
+```
+
+Here, the `va_alloc` function is used to allocate, possibly reallocate
+while printing, and possibly freeing the string in case of an
+out-of-memory error.
+
+For `char16_t*` and `char32_t*` target strings, there are
+`va_uasprintf` and `va_Uasprintf`, resp.
+
+`va_alloc` is a wrapper around `realloc` and `free`.  Any compatible
+function with the same prototype can be used instead.
+
+Again, it is possible to create a stream for iterative printing:
+```c
+va_stream_vec_t *stream = VA_STREAM_VEC(va_alloc);
+va_iprintf(stream, "foo");
+va_iprintf(stream, "bar ~u", 55);
+...
+```
+
+For 16 and 32 bit chars, there is `va_stream_vec16_t` plus
+`VA_STREAM_VEC16` and `va_stream_vec32_t` plus `VA_STREAM_VEC32`.
+
+### Printing Into Files
+
+### Counting String Sizes
+
+The function `va_lprintf` returns the number of characters printed
+into an output stream.
 
 ## Unicode
 
@@ -717,16 +897,6 @@ Examples:
 
 ## Restrictions
 
-- Compiling `printf` with any modern compiler gives you compile time
-  warnings about the argument type vs. format string consistency.  If
-  these warnings are gone, there are usually no typing problems left.
-  For this library, no such warnings can be issued.  And while it is
-  type safe, i.e., crashes are more unlikely, particularly the
-  argument count va. format specifier count is not checked, while it
-  is checked in `printf` with a modern compiler.  With this library,
-  printing too many or too few arguments will result in undesirable
-  output.
-
 - `%n` is not implemented, because pointers to integers are already
   used for strings, and the ambiguity between `size_t*` and
   `char32_t*` is common on many 32-bit systems, where both are
@@ -767,6 +937,19 @@ Examples:
   Printing with `~hhc` works as expected (but `~zc` does not,
   because, `\xfe` is an `int`).  Printing `(char)'\xfe'` also works,
   but is more ugly in my opinion (I do not like casts much).
+
+- Compiling `printf` with any modern compiler gives you compile time
+  warnings about the argument type vs. format string consistency.  If
+  these warnings are gone, there are usually no typing problems left
+  for the target architecture (but compiling for other architectures
+  may still have warnings and produce crashing code).
+
+  For this library, no such warnings are be issued, because the
+  argument passing is type safe and you cannot crash it with a wrong
+  format specifier.  However, if the argument count and format
+  specifier count do not match, then the output is likely wrong, and
+  the function will have undesirable behaviour.  There is no compile
+  time warning for this.
 
 - gcc 6: The library itself uses relatively little stack.  But gcc
   (and also clang 3.8) accumulates the temporary stack objects in each
@@ -838,7 +1021,7 @@ Examples:
   need to think much about what you're printing with what format
   specifier, and there are no `PRId16` macros that obfuscate your
   portable code.  And you can use UTF-8, -16, -32 strings seamlessly
-  and mix them freely.  You can print into a malloced or stack
+  and mix them freely.  You can print into a alloced or stack
   allocated compound literal safely, with error checking (end of
   string, out of memory, etc.) and guaranteed NUL termination.
 
@@ -909,11 +1092,11 @@ This can also be done by creating a dynamically allocated string with
 `va_alloc()`, which uses the system's `realloc()` and `free()` internally:
 
 ```c
-#include <va_print/malloc.h>
+#include <va_print/alloc.h>
 
 FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
 {
-    char *fn = va_mprintf(va_alloc, "~s/~s~.s", dir, file, suffix);
+    char *fn = va_asprintf("~s/~s~.s", dir, file, suffix);
     if (fn == NULL) {
         return NULL;
     }
@@ -931,8 +1114,9 @@ using va_lprintf():
 
 FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
 {
-    char n[va_lprintf("~s/~s~.s", dir, file, suffix)];
-    return fopen(va_szprintf(n, "~s/~s~.s", dir, file, suffix), "rt");
+    char s[va_zprintf(char, "~s/~s~.s", dir, file, suffix)];
+    return fopen(va_sprintf(s, "~s/~s~.s", dir, file, suffix), "rt");
+
 }
 ```
 
@@ -963,7 +1147,7 @@ is used for state information when parsing the format string, and for
 storing the output printer.  The pointer to this temporary object is
 returned by all of the functions to the next layer of recursion.  The
 `init()` initialises the format parser and the output stream (e.g. for
-NUL termination and initial `malloc()`), and each `render()` consumes
+NUL termination and initial `alloc()`), and each `render()` consumes
 one argument by printing it (once or more times) or using it as a
 width or precision.
 
@@ -991,7 +1175,7 @@ render(0, render(1, init(1,stream), a), b);
 
 The `init(0,...)` macro call is an extern function call that
 initialises the stream, initialises the output stream (e.g., NUL
-terminates a char array and/or mallocs initial memory), and parses the
+terminates a char array and/or allocs initial memory), and parses the
 format string, so that even with no arguments, the expression behaves
 in a sane way.
 

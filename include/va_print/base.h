@@ -322,6 +322,17 @@ typedef struct {
  * Too many or too few arguments were given for the format string. */
 #define VA_E_ARGC 6
 
+/**
+ * The EACH() macro applied to all VA_E_* error codes. */
+#define VA_E_FOREACH \
+    EACH(VA_E_OK) \
+    EACH(VA_E_NULL) \
+    EACH(VA_E_DECODE) \
+    EACH(VA_E_ENCODE) \
+    EACH(VA_E_TRUNC) \
+    EACH(VA_E_FORMAT) \
+    EACH(VA_E_ARGC)
+
 /* ********************************************************************** */
 /* epilogue */
 

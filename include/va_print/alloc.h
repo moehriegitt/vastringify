@@ -19,26 +19,26 @@
 /* defaults */
 
 #ifndef va_vec_encode
-#include <va_print/malloc_utf8.h>
+#include <va_print/alloc_utf8.h>
 /** String encoding for 'char' based reallocated strings. */
 #define va_vec_encode utf8
 #endif
 
 #ifndef va_vec16_encode
-#include <va_print/malloc_utf16.h>
+#include <va_print/alloc_utf16.h>
 /** String encoding for 'char16_t' based reallocated strings. */
 #define va_vec16_encode utf16
 #endif
 
 #ifndef va_vec32_encode
-#include <va_print/malloc_utf32.h>
+#include <va_print/alloc_utf32.h>
 /** String encoding for 'char32_t' based reallocated strings. */
 #define va_vec32_encode utf32
 #endif
 
-#ifndef va_mprintf_init_size
+#ifndef va_asprintf_init_size
 /** Minimal number of entries in reallocated strings. */
-#define va_mprintf_init_size 16
+#define va_asprintf_init_size 16
 #endif
 
 #ifdef __cplusplus
@@ -53,21 +53,21 @@ extern "C" {
 #define VA_STREAM_VEC(M) \
     ((va_stream_vec_t){ \
         VA_STREAM(&VA_CONCAT(va_vec_vtab_,va_vec_encode)), NULL, \
-        va_mprintf_init_size, 0, (M) })
+        va_asprintf_init_size, 0, (M) })
 
 /**
  * Generate an object of type va_stream_vec16_t */
 #define VA_STREAM_VEC16(M) \
     ((va_stream_vec16_t){ \
         VA_STREAM(&VA_CONCAT(va_vec16_vtab_,va_vec16_encode)), NULL, \
-        va_mprintf_init_size, 0, (M) })
+        va_asprintf_init_size, 0, (M) })
 
 /**
  * Generate an object of type va_stream_vec32_t */
 #define VA_STREAM_VEC32(M) \
     ((va_stream_vec32_t){ \
         VA_STREAM(&VA_CONCAT(va_vec32_vtab_,va_vec32_encode)), NULL, \
-        va_mprintf_init_size, 0, (M) })
+        va_asprintf_init_size, 0, (M) })
 
 /**
  * Prints into a newly allocated 'char*' buffer using the given alloc()
@@ -97,12 +97,12 @@ extern "C" {
  * deallocation.  If you pass own functions, be sure that they can
  * allocate (ptr==NULL), reallocate, and deallocate (nmemb==0).
  */
-#define va_mprintf(alloc,...) \
+#define va_axprintf(alloc,...) \
     VA_BLOCK_EXPR(va_xprintf(&VA_STREAM_VEC(alloc), __VA_ARGS__)->data)
 
 /**
  * Prints into a newly allocated 'char16_t*' buffer using the
- * given realloc().
+ * given allocator function.
  *
  * This doubles the buffer as the string is printed until the string
  * completely fills the buffer.  This starts allocating with a 16 byte
@@ -113,7 +113,7 @@ extern "C" {
  * If memory is exhausted while printing, then the string so far allocated
  * is deallocated using the given realloc() and then NULL is returned.
  */
-#define va_umprintf(M,...) \
+#define va_uaxprintf(M,...) \
     VA_BLOCK_EXPR(va_xprintf(&VA_STREAM_VEC16(M), __VA_ARGS__)->data)
 
 /**
@@ -129,8 +129,26 @@ extern "C" {
  * If memory is exhausted while printing, then the string so far allocated
  * is deallocated using the given realloc() and then NULL is returned.
  */
-#define va_Umprintf(M,...) \
+#define va_Uaxprintf(M,...) \
     VA_BLOCK_EXPR(va_xprintf(&VA_STREAM_VEC32(M), __VA_ARGS__)->data)
+
+/**
+ * The va_axprintf() function used with va_alloc(), i.e., with the
+ * system `realloc` and `free` allocator.
+ */
+#define va_asprintf(...) va_axprintf(va_alloc, __VA_ARGS__)
+
+/**
+ * The va_uaxprintf() function used with va_alloc(), i.e., with the
+ * system `realloc` and `free` allocator.
+ */
+#define va_uasprintf(...) va_uaxprintf(va_alloc, __VA_ARGS__)
+
+/**
+ * The va_Uaxprintf() function used with va_alloc(), i.e., with the
+ * system `realloc` and `free` allocator.
+ */
+#define va_Uasprintf(...) va_Uaxprintf(va_alloc, __VA_ARGS__)
 
 /* ********************************************************************** */
 /* types */
@@ -195,7 +213,7 @@ extern void va_vec32_put(
  * This asserts that size != 0: this parameter should come from a
  * sizeof() operator.
  *
- * The string returned by vm_mprintf() when v_alloc() is used can be
+ * The string returned by vm_asprintf() when v_alloc() is used can be
  * freed using 'free()'.  No need to use 'va_alloc()' for freeing
  * (and thinking about the value of 'size').
  */

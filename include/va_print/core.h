@@ -182,6 +182,11 @@ extern "C" {
 #define va_xinit0(z,x,g) va_xprintf_init_last((va_stream_t*)(1?(z):((void*)0)), x, g)
 #define va_xinit1(z,x,g) va_xprintf_init((va_stream_t*)(1?(z):((void*)0)), x, g)
 
+/**
+ * Get stream error code.
+ */
+#define va_stream_get_error(stream) va_stream_get_error_f(&(stream)->s)
+
 /* ********************************************************************** */
 /* extern objects */
 
@@ -250,6 +255,19 @@ extern va_stream_t *va_xprintf_init_last(
     va_stream_t *,
     void const *x,
     va_read_iter_vtab_t const *get_vtab);
+
+/**
+ * Get a stream's error code.
+ *
+ * External function.
+ */
+extern unsigned va_stream_get_error_f(va_stream_t const *s);
+
+/**
+ * Return a human readable representation of a va_error_t::code
+ * or NULL.
+ */
+extern char const *va_strerror(unsigned);
 
 /* ********************************************************************** */
 /* epilogue */

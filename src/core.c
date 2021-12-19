@@ -3,6 +3,10 @@
 
 #include <assert.h>
 #include <string.h>
+#if 0
+#include <stdio.h>
+#warning stdio.h
+#endif
 #include "va_print/core.h"
 #include "va_print/impl.h"
 
@@ -827,7 +831,6 @@ end_of_size:
 ast_arg:
     /* if there are no more args, eat up the whole format string */
     if (s->opt & VA_OPT_LAST) {
-        va_stream_set_error(s, VA_E_ARGC);
         return 2;
     }
     /* exit printer loop, i.e., read next arg */
@@ -837,7 +840,6 @@ end_of_format:
     s->width = 0;
     s->prec = VA_PREC_NONE;
     s->opt &= VA_OPT_RESET_END;
-    VA_BSET(s->opt, VA_OPT_STATE, VA_STATE_SKIP);
     /* exit printer loop at end of string */
     return 0;
 }
@@ -858,8 +860,11 @@ static bool set_ast(va_stream_t *s, long long x)
         return 0;
 
     case VA_STATE_SKIP:
-        va_stream_set_error(s, VA_E_ARGC);
         VA_BSET(s->opt, VA_OPT_STATE, VA_STATE_ARG);
+        return 0;
+
+    case VA_STATE_INIT:
+        va_stream_set_error(s, VA_E_ARGC);
         return 0;
     }
 
@@ -981,6 +986,11 @@ extern va_stream_t *va_xprintf_char(va_stream_t *s, char x)
     }
 }
 
+extern unsigned va_stream_get_error_f(va_stream_t const *s)
+{
+    return VA_BGET(s->opt, VA_OPT_ERR);
+}
+
 extern va_stream_t *va_xprintf_error_t_p(va_stream_t *s, va_error_t *x)
 {
     ensure_init(s);
@@ -1070,12 +1080,12 @@ extern va_stream_t *va_xprintf_last_iter(va_stream_t *s, va_read_iter_t *x)
 extern va_stream_t *va_xprintf_last_error_t_p(va_stream_t *s, va_error_t *x)
 {
     ensure_init(s);
-    if (VA_BGET(s->opt, VA_OPT_STATE) != VA_STATE_SKIP) {
+    if (VA_BGET(s->opt, VA_OPT_STATE) != VA_STATE_INIT) {
         /* we're not reading anything, so there are too few arguments. */
         va_stream_set_error(s, VA_E_ARGC);
     }
     s->opt |= VA_OPT_LAST;
-    parse_format(s);
+    while (parse_format(s) >= 2) {}
     return va_xprintf_error_t_p(s,x);
 }
 
@@ -1087,6 +1097,19 @@ extern va_stream_t *va_xprintf_init_last(
     va_xprintf_init(s, x, get_vtab);
     ensure_init(s);
     s->opt |= VA_OPT_LAST;
-    parse_format(s);
+    while (parse_format(s) >= 2) {}
     return s;
+}
+
+extern char const *va_strerror(unsigned u)
+{
+    static char const *const name[] = {
+#define EACH(X) [X] = #X,
+VA_E_FOREACH
+#undef EACH
+    };
+    if (u < va_countof(name)) {
+        return name[u];
+    }
+    return NULL;
 }

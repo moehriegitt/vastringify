@@ -1,8 +1,8 @@
 /* -*- Mode: C -*- */
 /* (c) Henrik Theiling, LICENSE: BSD-3-Clause */
 
-#include "va_print/malloc.h"
-#include "va_print/malloc_utf16.h"
+#include "va_print/alloc.h"
+#include "va_print/alloc_utf16.h"
 #include "va_print/utf16.h"
 
 /* ********************************************************************** */

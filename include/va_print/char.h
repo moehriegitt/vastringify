@@ -50,7 +50,7 @@ extern "C" {
 
 /**
  * Value of type va_string_char_p_t */
-#define VA_STREAM_CHARP(S,N) \
+#define VA_STREAM_CHAR_P(S,N) \
     ((va_stream_char_p_t){ \
         VA_STREAM(va_char_p_vtab_gen(S)), (S), (N), 0 })
 
@@ -60,13 +60,19 @@ extern "C" {
  * The resulting string is always NUL-terminated, but may
  * be truncated if too much is printed.
  *
- * The required size can be determined with va_lprintf().
+ * The required size can be determined with va_gcprintf(),
+ * va_cprintf(), va_ucprintf(), or va_Ucprintf().
+ *
+ * The length \p N given to this function must not be 0,
+ * otherwise the resulting string will not be NUL terminated.
+ *
+ * If the pointer \p S is NULL, this prints nothing.
  *
  * This returns S filled with the result.
  */
 #define va_snprintf(S,N,...) \
     VA_BLOCK_EXPR((__typeof__(*(S))*)(va_xprintf( \
-        &VA_STREAM_CHARP(S,N), __VA_ARGS__)->data))
+        &VA_STREAM_CHAR_P(S,N), __VA_ARGS__)->data))
 
 /**
  * Print into given char array.
@@ -74,11 +80,12 @@ extern "C" {
  * The size is determined by using va_countof() on the given
  * array parameter, otherwise this is like va_snprintf().
  *
- * The required size can be determined with va_lprintf().
+ * The required size can be determined with va_gcprintf(),
+ * va_cprintf(), va_ucprintf(), or va_Ucprintf().
  *
  * This returns S filled with the result.
  */
-#define va_szprintf(S,...) va_snprintf(S,va_countof(S),__VA_ARGS__)
+#define va_sprintf(S,...) va_snprintf(S,va_countof(S),__VA_ARGS__)
 
 /**
  * Print into new char array up to a given length.
@@ -86,13 +93,13 @@ extern "C" {
  * This generates a new compound literal char[N] and prints
  * into it like va_snprintf().
  *
- * The required size can be determined with va_lprintf().
+ * The required size can be determined with va_cprintf().
  *
  * This returns a char* pointer with the result.
  */
 #define va_nprintf(N,...) \
     ((char*)(va_xprintf( \
-        &VA_STREAM_CHARP((char[N]){0}, N), __VA_ARGS__)->data))
+        &VA_STREAM_CHAR_P((char[N]){0}, N), __VA_ARGS__)->data))
 
 /**
  * Print into new char16_t array up to a given length.
@@ -100,13 +107,13 @@ extern "C" {
  * This generates a new compound literal char16_t[N] and prints
  * into it like va_snprintf().
  *
- * The required size can be determined with va_lprintf().
+ * The required size can be determined with va_ucprintf().
  *
  * This returns a char* pointer with the result.
  */
 #define va_unprintf(N,...) \
     ((char16_t*)(va_xprintf( \
-        &VA_STREAM_CHARP((char16_t[N]){0}, N), __VA_ARGS__)->data))
+        &VA_STREAM_CHAR_P((char16_t[N]){0}, N), __VA_ARGS__)->data))
 
 /**
  * Print into new char32_t array up to a given length.
@@ -114,13 +121,29 @@ extern "C" {
  * This generates a new compound literal char32_t[N] and prints
  * into it like va_snprintf().
  *
- * The required size can be determined with va_lprintf().
+ * The required size can be determined with va_Ucprintf().
  *
  * This returns a char* pointer with the result.
  */
 #define va_Unprintf(N,...) \
     ((char32_t*)(va_xprintf( \
-        &VA_STREAM_CHARP((char32_t[N]){0}, N), __VA_ARGS__)->data))
+        &VA_STREAM_CHAR_P((char32_t[N]){0}, N), __VA_ARGS__)->data))
+
+/**
+ * Count the number of 'Char' needed to represent the output
+ * string (mnemonic: siZe).
+ *
+ * This simulates printing like va_snprintf() and returns the number of
+ * 'Char' typed elements that are needed to print the whole result.  The
+ * resulting size can be used to allocate an array that fits
+ * the resulting encoded string tightly.
+ *
+ * Note: this returns the length of the string in bytes plus 1,
+ * i.e., the needed array size including the NUL termination.
+ */
+#define va_zprintf(Char, ...) \
+    VA_BLOCK_EXPR(va_xprintf( \
+        &VA_STREAM_CHAR_P((Char*)NULL, -(size_t)2), __VA_ARGS__)->pos + 1)
 
 /* ********************************************************************** */
 /* types */

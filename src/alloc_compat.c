@@ -3,7 +3,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include "va_print/malloc.h"
+#include "va_print/alloc.h"
 
 /* ********************************************************************** */
 /* extern functions */

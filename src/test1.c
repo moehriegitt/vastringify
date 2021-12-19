@@ -8,7 +8,7 @@
 #include "va_print/core.h"
 #include "va_print/len.h"
 #include "va_print/char.h"
-#include "va_print/malloc.h"
+#include "va_print/alloc.h"
 #include "va_print/file.h"
 
 #define __unused __attribute__((__unused__))
@@ -40,18 +40,18 @@ static void test_iuscp(
 
     char s[200] = "test";
     printf("%s;", va_snprintf(s, 200, f, a,b,c,d,e));
-    printf("%s;", va_szprintf(s, f, a,b,c,d,e));
+    printf("%s;", va_sprintf(s, f, a,b,c,d,e));
     size_t l1 = strlen(s);
     size_t l2 = va_lprintf(f, a,b,c,d,e);
     assert(l1 == l2);
 
-    char *s3 = va_mprintf(va_alloc, f, a,b,c,d,e);
+    char *s3 = va_axprintf(va_alloc, f, a,b,c,d,e);
     assert(s3 != NULL);
     printf("%s;", s3);
     free(s3);
 
     char s4[200];
-    va_stream_char_p_t *ss = &VA_STREAM_CHARP(s4, sizeof(s4));
+    va_stream_char_p_t *ss = &VA_STREAM_CHAR_P(s4, sizeof(s4));
     va_iprintf(ss, f, a,b,c,d,e);
     size_t l4 = ss->pos;
     assert(l1 == l4);
@@ -96,12 +96,15 @@ int main(void)
     PRINTF1("~c", "\u201c", 0x201c);
     PRINTF1("~a", "\u201c", U"\u201c");
 
-    char16_t a1[20];
-    (void)va_szprintf(a1, "test\u201c~qs", "\u201c");
+    char16_t a1[10];
+    (void)va_sprintf(a1, "test\u201c~qs", "\u201c");
     PRINTF1("test\u201c~qs", a1, "\u201c");
 
-    char32_t a1b[20];
-    (void)va_szprintf(a1b, "test\u201c~qs", "\u201c");
+    (void)va_snprintf(a1, 5, "ab~scde", "\u201c");
+    PRINTF1("ab~sc", a1, "\u201c");
+
+    char32_t a1b[10];
+    (void)va_sprintf(a1b, "test\u201c~qs", "\u201c");
     PRINTF1("test\u201c~qs", a1b, "\u201c");
 
     char16_t *a2 = va_unprintf(20, "test\u201c~qs", "\u201c");
@@ -110,15 +113,15 @@ int main(void)
     char32_t *a2b = va_Unprintf(20, "test\u201c~qs", "\u201c");
     PRINTF1("test\u201c~qs", a2b, "\u201c");
 
-    char *a3 = va_mprintf(va_alloc, u"test\u201c~qs", "\u201c");
+    char *a3 = va_asprintf(u"test\u201c~qs", "\u201c");
     PRINTF1("test\u201c~qs", a3, "\u201c");
     free(a3);
 
-    char16_t *a4 = va_umprintf(va_alloc, "test\u201c~qs", "\u201c");
+    char16_t *a4 = va_uaxprintf(va_alloc, "test\u201c~qs", "\u201c");
     PRINTF1("test\u201c~qs", a4, "\u201c");
     free(a4);
 
-    char32_t *a4b = va_Umprintf(va_alloc, "test\u201c~qs", "\u201c");
+    char32_t *a4b = va_Uasprintf("test\u201c~qs", "\u201c");
     PRINTF1("test\u201c~qs", a4b, "\u201c");
     free(a4b);
 
@@ -159,7 +162,7 @@ int main(void)
     printf("%u;;\ufeffh\uc0c0g\u201ch;%s;\n", __LINE__, "\ufeffh\uc0c0g\u201ch");
     char *s1 = va_nprintf(20, "~a","\ufeffh\uc0c0g\u201ch");
     printf("%u;;\ufeffh\uc0c0g\u201ch;%s;\n", __LINE__, s1);
-    char *s2 = va_mprintf(va_alloc, "~a", "\ufeffh\uc0c0g\u201ch");
+    char *s2 = va_asprintf("~a", "\ufeffh\uc0c0g\u201ch");
     printf("%u;;\ufeffh\uc0c0g\u201ch;%s;\n", __LINE__, s2);
     free(s2);
 
@@ -470,33 +473,87 @@ int main(void)
     PRINTF2("a10b", "a~#pb", 16);
 
     va_stream_file_t *fbu = &VA_STREAM_FILE(stdout);
+    assert(va_stream_get_error(fbu) == VA_E_OK);
+
+    va_iprintf(fbu, "");
+    assert(va_stream_get_error(fbu) == VA_E_OK);
+
     va_iprintf(fbu, "~u;;", __LINE__);
+    assert(va_stream_get_error(fbu) == VA_E_OK);
+
     va_iprintf(fbu, "a10b;");
+    assert(va_stream_get_error(fbu) == VA_E_OK);
+
     va_iprintf(fbu, "a~#pb\n", 16);
+    assert(va_stream_get_error(fbu) == VA_E_OK);
 
     printf("\n");
 
     char bu[30];
-    va_stream_char_p_t *sbu = &VA_STREAM_CHARP(bu, sizeof(bu));
+    va_stream_char_p_t *sbu = &VA_STREAM_CHAR_P(bu, sizeof(bu));
     va_iprintf(sbu, "~u;;", __LINE__);
     va_iprintf(sbu, "a10b;");
     va_iprintf(sbu, "a~#pb\n", 16);
+    //assert(va_stream_get_error(sbu) == VA_E_OK);
     printf("%s", bu);
     printf("\n");
 
     /* check that string is initialised if no arg is given and no char is written */
     char s[10] = "foo";
-    va_szprintf(s, "");
+    va_sprintf(s, "");
     PRINTF2("ab", "a~sb", s); va_printf("\n");
 
     /* check that string is initialised if only error is requested */
     strcpy(s, "foo");
-    va_szprintf(s, "", &e);
+    va_sprintf(s, "", &e);
     PRINTF2("ab", "a~sb", s); va_printf("\n");
 
     /* check that string is terminated if last is err */
     PRINTF2("a5b", "a~s~sb", 5, &e); va_printf("\n");
     assert(e.code == VA_E_ARGC);
+
+    /* check that string is terminated if last is err */
+    PRINTF2("a5b", "a5~sb", &e); va_printf("\n");
+    assert(e.code == VA_E_ARGC);
+
+    /* check that error_t is skipped properly */
+    PRINTF2("a5b", "a~*sb", &e, 0, 5); va_printf("\n");
+    assert(e.code == VA_E_OK);
+    PRINTF2("a5b", "a~*sb", 0, &e, 5); va_printf("\n");
+    assert(e.code == VA_E_OK);
+    PRINTF2("a5b", "a~*sb", 0, 5, &e); va_printf("\n");
+    assert(e.code == VA_E_OK);
+
+    /* check that string is terminated if err is after '*' */
+    PRINTF2("a5b", "a5~*sb", &e, 0); va_printf("\n");
+    assert(e.code == VA_E_OK);
+
+    /* check init terminates string properly */
+    PRINTF2("a5b", "a~s5~s~qs~ub~x"); printf("\n");
+    va_printf("M9a;;a5b;a~s5~s~qs~ub~x"); printf("\n");
+
+    /* check that string is terminated if last is err and '*' needs a value. */
+    PRINTF2("a5b", "a5~*sb"); va_printf("\n");
+    PRINTF2("a5b", "a5~*sb", &e); va_printf("\n");
+    assert(e.code == VA_E_ARGC);
+
+    /* check that string indicates ARGC error for too many args */
+    e.code = 0; /* just to be sure */
+    PRINTF2("a5b", "a~sb", 5, 6, &e); va_printf("\n");
+    assert(e.code == VA_E_ARGC);
+
+    /* check that string indicates ARGC error for too many args */
+    e.code = 0; /* just to be sure */
+    PRINTF2("a5b", "a5b", 6, &e); va_printf("\n");
+    assert(e.code == VA_E_ARGC);
+
+    /* check that string does not indicate ARGC error for right number of args */
+    PRINTF2("a5b", "a~sb", 5, &e); va_printf("\n");
+    assert(e.code == VA_E_OK);
+
+    /* check that string does not indicate ARGC error for right number of args */
+    PRINTF2("a5b", "a5b", &e); va_printf("\n");
+    assert(e.code == VA_E_OK);
 
     /* check that normal print works */
     va_printf("M0a;;a56b;a~s~sb", (int)5, (int)6); printf("\n");
@@ -580,6 +637,22 @@ int main(void)
 
     va_printf("M2o;;a5c;a~u~uc", (void*)5); va_printf("\n");
 
+    /* UTF8/16 end of string handling */
+    PRINTF2("abc", "~s", va_nprintf(4, "~s", "abcdefg"));
+    PRINTF2("ab\xe2", "~s", va_nprintf(4, "~s", "ab\u201ccdefg"));
+    PRINTF2("ab", "~s", va_nprintf(4, "~.3s", "ab\u201ccdefg"));
+    PRINTF2("0xf", "~s", va_nprintf(4, "~#zx", -1));
+
+    PRINTF2("abc", "~s", va_unprintf(4, "~s", "abcdefg"));
+    PRINTF2("ab\u201c", "~s", va_unprintf(4, "~s", "ab\u201ccdefg"));
+    PRINTF2("ab\ufffd", "~s", va_unprintf(4, "~s", "ab\U0010201ccdefg"));
+    PRINTF2("ab", "~s", va_unprintf(4, "~.3s", "ab\U0010201ccdefg"));
+    PRINTF2("0xf", "~s", va_unprintf(4, "~#zx", -1));
+
+    printf("%u;;1;%zu\n", __LINE__, va_zprintf(char,""));
+    printf("%u;;5;%zu\n", __LINE__, va_zprintf(char,"~#x",18));
+    printf("%u;;6;%zu\n", __LINE__, va_zprintf(char,"a~sb", "\u201c"));
+    printf("%u;;4;%zu\n", __LINE__, va_zprintf(char16_t,"a~sb", "\u201c"));
 #endif
 
     return 0;

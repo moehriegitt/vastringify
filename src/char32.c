@@ -11,24 +11,30 @@
 extern void va_char32_p_init(va_stream_t *s)
 {
     va_stream_char_p_t *t = (va_stream_char_p_t*)s;
+    assert((t->size > 0) && "string must not be size 0: need to fit NUL");
     char32_t *data = t->data;
     if (t->pos >= t->size) {
         va_stream_set_error(&t->s, VA_E_TRUNC);
         return;
     }
-    data[t->pos] = 0;
+    if (data != NULL) {
+        data[t->pos] = 0;
+    }
 }
 
 extern void va_char32_p_put(va_stream_t *s, char32_t c)
 {
     va_stream_char_p_t *t = (va_stream_char_p_t*)s;
-    char32_t *data = t->data;
     if (t->pos + 1 >= t->size) {
         va_stream_set_error(&t->s, VA_E_TRUNC);
         return;
     }
-    data[t->pos] = c;
-    data[++t->pos] = 0;
+    char32_t *data = t->data;
+    if (data != NULL) {
+        data[t->pos] = c;
+        data[t->pos+1] = 0;
+    }
+    t->pos++;
 }
 
 extern void const *va_char32_p_end(

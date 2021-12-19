@@ -64,7 +64,7 @@ extern unsigned va_char_p_take_utf8(
  *
  * This prints the U+0000 as a single byte 0x00.  Printing 0 is used to
  * initialise streams (e.g., to NUL terminate uninitialised arrays or
- * to malloc an initial string).
+ * to alloc an initial string).
  *
  * The UTF-8 sequence will be printed into s byte by byte using put(s,b).
  */
