@@ -134,6 +134,16 @@ LIB_O := \
     out/file_utf16le.o \
     out/file_utf32be.o \
     out/file_utf32le.o \
+    out/fd.o \
+    out/fd16be.o \
+    out/fd16le.o \
+    out/fd32be.o \
+    out/fd32le.o \
+    out/fd_utf8.o \
+    out/fd_utf16be.o \
+    out/fd_utf16le.o \
+    out/fd_utf32be.o \
+    out/fd_utf32le.o \
     out/utf8.o \
     out/utf16.o \
     out/utf32.o
@@ -186,7 +196,7 @@ test: test1 test3
 .PHONY: test1
 test1: all
 	$(EXECUTE) ./out/test1.x > test.out
-	cat test.out
+	# cat test.out
 	perl -n cmp.pl test.out
 
 .PHONY: test3

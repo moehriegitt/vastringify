@@ -10,6 +10,7 @@
 #include "va_print/char.h"
 #include "va_print/alloc.h"
 #include "va_print/file.h"
+#include "va_print/fd.h"
 
 #define __unused __attribute__((__unused__))
 
@@ -660,6 +661,14 @@ int main(void)
     printf("%u;;4;%zu\n", __LINE__, va_gzprintf(char32_t,"a~sb", "\u201c"));
     printf("%u;;4;%zu\n", __LINE__, va_Uzprintf("a~sb", "\u201c"));
     printf("%u;;4;%zu\n", __LINE__, va_Uzprintf("a~sb", "\U0010201c"));
+
+    va_fprintf(stdout, "~u;;a5c;a~sc\n", __LINE__, 5);
+    va_fprintf(stdout, "~u;;a5c;a~sc\n", __LINE__, "5");
+    fflush(stdout);
+
+    va_dprintf(1, "~u;;a0005c;a~.4sc\n", __LINE__, 5);
+    va_dprintf(1, "~u;;a5   c;a~-4sc\n", __LINE__, "5");
+
 #endif
 
     return 0;

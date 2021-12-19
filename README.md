@@ -58,6 +58,12 @@ void
 va_fprintf(FILE *f, Char const *format, ...);
 
 void
+va_ufprintf(FILE *f, Char const *format, ...);
+
+void
+va_Ufprintf(FILE *f, Char const *format, ...);
+
+void
 va_printf(Char const *format, ...);
 
 va_stream_file_t
@@ -131,6 +137,22 @@ VA_STREAM_VEC32(void *(*alloc)(void *, size_t, size_t));
 
 void *
 va_alloc(void *data, size_t nmemb, size_t size);
+
+
+```c
+#include <va_print/fd.h>
+
+void
+va_dprintf(int fd, Char const *format, ...);
+
+void
+va_udprintf(int fd, Char const *format, ...);
+
+void
+va_Udprintf(int fd, Char const *format, ...);
+
+va_stream_file_t
+VA_STREAM_FD(int fd);
 
 
 #include <va_print/len.h>
@@ -677,6 +699,54 @@ To write `char16_t` or `char32_t` streams into files, the encodings
 `UTF-16BE` and `UTF-32BE` are used by default.  Functions for this
 are called `va_ufprintf` and `va_Ufprintf`, resp.
 
+For files, there is a stream type `va_stream_file_t` that can be
+constructed using `VA_STREAM_FILE`, e.g., to iteratively print.
+
+```c
+va_stream_file_t stream = VA_STREAM_FILE(stderr);
+va_iprintf(&stream, "foo");
+va_iprintf(&stream, "bar ~u", 55);
+va_iprintf(&stream, "longer than the string, will be cropped");
+...
+```
+
+The 16-bit and 32-bit versions use the same stream type, and the
+constructors are called `VA_STREAM_FILE16` and `VA_STREAM_FILE32`,
+resp.  `
+
+
+### Printing Into Raw File Descriptors
+
+```c
+#include <va_print/fd.h>
+```
+
+To print into `int` typed file descriptors, there is `va_dprintf`, which
+returns nothing.
+
+```c
+va_dprintf(2, "foo~s", msg);
+```
+
+To write `char16_t` or `char32_t` streams into files, the encodings
+`UTF-16BE` and `UTF-32BE` are used by default.  Functions for this
+are called `va_udprintf` and `va_Udprintf`, resp.
+
+For file descriptors, there is a stream type `va_stream_fd_t` that
+can be constructed using `VA_STREAM_FD`, e.g., to iteratively print.
+
+```c
+va_stream_fd_t stream = VA_STREAM_FD(2);
+va_iprintf(&stream, "foo");
+va_iprintf(&stream, "bar ~u", 55);
+va_iprintf(&stream, "longer than the string, will be cropped");
+...
+```
+
+The 16-bit and 32-bit versions use the same stream type, and the
+constructors are called `VA_STREAM_FD16` and `VA_STREAM_FD32`, resp.
+`
+
 ### Computing String Lengths
 
 ```c
@@ -874,6 +944,20 @@ These are suffixed to find the vtab object for writing:
     va_file_vtab_ ## va_file_encode
     va_file16_vtab_ ## va_file16_encode
     va_file32_vtab_ ## va_file32_encode
+
+For `int` file descriptor output, the default encoding is UTF-8,
+UTF-16BE, and UTF-32BE, depending on output character width.  The
+following #defines correspond to the encoding:
+
+    #define va_fd8_encode utf8
+    #define va_fd16_encode utf16be
+    #define va_fd32_encode utf32be
+
+These are suffixed to find the vtab object for writing:
+
+    va_fd_vtab_ ## va_fd_encode
+    va_fd16_vtab_ ## va_fd16_encode
+    va_fd32_vtab_ ## va_fd32_encode
 
 ## Quotation
 
