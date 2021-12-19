@@ -199,6 +199,15 @@ typedef struct { unsigned code; } va_error_t;
 
 va_stream_t
 VA_STREAM(va_stream_vtab_t const *vtab);
+
+#define VA_U_REPLACEMENT 0xfffd
+#define VA_U_BOM         0xfeff
+#define VA_U_SURR_MIN    0xd800
+#define VA_U_SURR_MAX    0xdfff
+#define VA_U_MAX         0x0010ffff
+#define VA_U_MAXMAX      0x00ffffff
+
+#define va_countof(A)    (sizeof(A)/sizeof((A)[0]))
 ```
 
 ## Description

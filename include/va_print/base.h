@@ -131,6 +131,9 @@ extern "C" {
 /** Unicode replacement character */
 #define VA_U_REPLACEMENT 0xfffd
 
+/** Unicode byte order mark */
+#define VA_U_BOM 0xfeff
+
 /** Unicode maximum codepoint */
 #define VA_U_MAX 0x10ffff
 
