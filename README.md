@@ -243,7 +243,7 @@ the current library handles such format strings.
    In `~#p`, the `#` flag switches off the implicit `#` that is
    contained in `p`, e.g., does not print the base prefix.
 
- For quoted strings, this inhibits printing of delimiting quotes.
+   For quoted strings, `#` inhibits printing of delimiting quotes.
 
  - `0` pads numerics with zero `0` on the left rather than
    with a space character ` `.  If a precision is given, this is
@@ -394,10 +394,6 @@ from the following list.
 
  - any combination of format character and type not mentioned above
    prints in default notation.
-
-Function parameters behind the last format specifier in the format
-string are printed in default notation after everything that is
-printed in the format string.
 
 ## Function Parameters
 
@@ -718,7 +714,7 @@ codepoint, how many UTF-8 (or whatever encoding is used) bytes are
 used for each codepoint.  This function is, therefore, useful for
 computing array sizes that fit the printed string exactly.
 
-For `char16_t` and `char32_t` based elements, the function is called
+For `char16_t` and `char32_t` based strings, the function is called
 `va_uzprintf` and `va_Uzprintf`, resp.
 
 There is a generic version that can be passed the array element
