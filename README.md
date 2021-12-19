@@ -1197,7 +1197,7 @@ Examples:
   macro mechanisms used are near impossible to understand and causse
   weird error messages and wrong error positions (in my gcc).  The
   _Generic mechanism causes a ton of C code to be emitted for each
-  print call -- the compiler throws almost of it away, based on
+  print call -- the compiler throws almost all of it away, based on
   argument type, but looking at the pre-processed code is
   interesting. The number of arguments may be inconsistent with the
   format string without compile time warning.
@@ -1284,8 +1284,7 @@ FILE *open_text_rd(
 }
 ```
 
-Using _Generic reduces the number of functions and macros, too, e.g.,
-you can use 8-bit, 16-bit, or 32-bit characters seamlessly.  The
+You can use 8-bit, 16-bit, or 32-bit characters seamlessly.  The
 following uses UTF-16 as a parameter, but calls fopen() with an UTF-8
 string.  The only change is the parameter type.  Just for fun, let's
 use an UTF-32 format string:
@@ -1303,19 +1302,23 @@ FILE *open_text_rd(
 }
 ```
 
-This can also be done by creating a dynamically allocated string with
-`va_alloc()`, which uses the system's `realloc()` and `free()` internally:
+This can also be done by creating a dynamically allocated string.  The
+`va_error_t` mechanism then protects against out-of-memory situation
+(in which case the function deallocates what it allocated before and
+returns NULL), and also against Unicode decoding/encoding errors, and
+other traps.
 
 ```c
 #include <va_print/alloc.h>
 
 FILE *open_text_rd(char const *dir, char const *file, unsigned suffix)
 {
-    char *fn = va_asprintf("~s/~s~.s", dir, file, suffix);
-    if (fn == NULL) {
-        return NULL;
+    FILE *f = NULL;
+    va_error_t e;
+    char *fn = va_asprintf("~s/~s~.s", dir, file, suffix, &e);
+    if (e.code == VA_E_OK) {
+        f = fopen(fn, "rt");
     }
-    FILE *f = fopen(fn, "rt");
     free(fn);
     return f;
 }
