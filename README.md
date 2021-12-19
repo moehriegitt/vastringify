@@ -153,6 +153,12 @@ va_iprintf(va_stream_...t *s, Char const *format, ...);
 void
 va_pprintf(va_stream_vtab_t *v, Char const *format, ...);
 
+unsigned
+va_stream_get_error(va_stream_...t const *s);
+
+extern
+char const *va_strerror(unsigned error_code);
+
 
 #include <va_print/base.h>
 
@@ -579,11 +585,14 @@ if (e.code != VA_E_OK) {
 
 Alternatively, if you have a stream anyway, there is
 `va_stream_get_error()` that returns the stream's error code.
+There is also `va_strerror()` to get the enum value as a string.
 
 ```c
 ...
-if (va_stream_get_error(&stream) != VA_E_OK) {
-    /* ... some stream error occurred ... */
+unsigned ec = va_stream_get_error(&stream);
+if (ec != VA_E_OK) {
+    va_fprintf(stderr, "ERROR: found ec=~s\n", va_strerror(ec));
+    /* ... more error handling */
 }
 ```
 

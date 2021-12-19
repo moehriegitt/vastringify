@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <uchar.h>
+#include <va_print/file.h>
 
 #pragma GCC diagnostic ignored "-Wmissing-prototypes"
 #pragma GCC diagnostic ignored "-Wvla"
