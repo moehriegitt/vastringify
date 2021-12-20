@@ -139,7 +139,6 @@ void *
 va_alloc(void *data, size_t nmemb, size_t size);
 
 
-```c
 #include <va_print/fd.h>
 
 void

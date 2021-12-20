@@ -314,7 +314,7 @@ typedef struct {
 /**
  * Output stream error: the output is truncated due to an error: the printer hit
  * the end of the statically sized array, or the file printer had an error, or
- * an allocation failed in realloc() in va_mprintf(). */
+ * an allocation failed in realloc() in va_asprintf(). */
 #define VA_E_TRUNC 4
 
 /**
