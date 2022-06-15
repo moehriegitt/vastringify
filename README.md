@@ -310,7 +310,8 @@ number of raw code units read from the input string (not the number
 of converted code points, but the low-level number of elements
 in the string, so that non-NUL terminated arrays can be printed
 with their size passed as precision, even with multi-byte/multi-word
-encodings stored inside.
+encodings stored inside.  Alternatively, there is `va_arr_t` for a
+string prefix parameter type.
 
 The input decoder will not read incomplete encodings at the end of
 limited strings, but will stop before.  If a pointer to a string
@@ -503,6 +504,15 @@ The following function parameter types are recognised:
    strings.  There are quite a few constraints on how to
    define a proper `va_read_iter_t`, which are not all
    documented here.
+
+ - `va_arr_t*`: this is a length delimited string for printing
+   non-NUL terminated strings or prefixes of strings.  It is
+   an alternative way to specify the string size in the argument
+   directly instead of using the precision in the format specifier.
+
+ - `va_arr16_t*`: the same as `va_arr_t`, but for `char16_t` strings.
+
+ - `va_arr32_t*`: the same as `va_arr_t`, but for `char32_t` strings.
 
  - anything else: is tried to be converted to a pointer and
    printed in hexadecimal encoding by default, i.e., in `~x`
@@ -754,6 +764,34 @@ va_iprintf(&stream, "longer than the string, will be cropped");
 The 16-bit and 32-bit versions use the same stream type, and the
 constructors are called `VA_STREAM_FD16` and `VA_STREAM_FD32`, resp.
 `
+
+### Printing non-NUL Terminated Strings
+
+One way to print non-NUL terminated strings or prefixes of strings
+is by specifying the 'precision' in the format.  It is the length
+in `char`, `char16_t`, or `char32_t` elements and not the number of
+extracted codepoints, exactly for this purpose.
+
+```c
+char const *data = "abcdef";
+size_t size = 3;
+va_fprintf(stderr, "token=~.*qs", size, data);
+```
+This prints `token="abc"`.
+
+An alternative way of controlling this is to pass a pointer to
+`va_arr_t` to the printer, which contains the data and size:
+
+```c
+char const *data = "abcdef";
+size_t size = 3;
+va_fprintf(stderr, "token=~qs", (&(va_arr_t){ size, data }));
+```
+
+This also prints `token="abc"`.
+
+There are similar types `va_arr16_t` and `va_arr32_t` for wide
+character strings.
 
 ### Computing String Lengths
 
@@ -1103,7 +1141,11 @@ Examples:
 - for strings, the precision counts the number of output bytes in the
   standard, but in this library, it is the number of input elements in
   the array, i.e., the precision specifies the array size the string
-  points to.
+  points to.  It is felt that input count is more useful, because
+  it allows to print non-NUL terminated strings, while the output
+  width can be controlled by a delimited printer.  Also, different
+  glyph widths in Unicode means that the visual width cannot really
+  be controlled by the output count, either.
 
 - for strings, the width counts the number of characters that are
   printed, before encoding them in the output encoding.  This

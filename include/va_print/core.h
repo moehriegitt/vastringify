@@ -75,6 +75,12 @@ extern "C" {
     char32_t *:VA_CONCAT(fun##char32_p_,va_char32_p_decode), \
     char32_t const **:VA_CONCAT(fun##char32_const_pp_,va_char32_p_decode), \
     char32_t **:VA_CONCAT(fun##char32_pp_,va_char32_p_decode), \
+    va_arr_t const *:VA_CONCAT(fun##arr_p_,va_char_p_decode), \
+    va_arr_t *:VA_CONCAT(fun##arr_p_,va_char_p_decode), \
+    va_arr16_t const *:VA_CONCAT(fun##arr16_p_,va_char16_p_decode), \
+    va_arr16_t *:VA_CONCAT(fun##arr16_p_,va_char16_p_decode), \
+    va_arr32_t const *:VA_CONCAT(fun##arr32_p_,va_char32_p_decode), \
+    va_arr32_t *:VA_CONCAT(fun##arr32_p_,va_char32_p_decode), \
     unsigned char:fun##uchar, \
     unsigned short:fun##ushort, \
     unsigned int:fun##uint, \

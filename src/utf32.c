@@ -19,6 +19,14 @@ va_read_iter_vtab_t const va_char32_p_read_vtab_utf32 = {
     {0}
 };
 
+va_read_iter_vtab_t const va_arr32_p_read_vtab_utf32 = {
+    "char32_t*",
+    va_arr32_p_take_utf32,
+    va_char32_p_end,
+    'U',
+    {0}
+};
+
 /* ********************************************************************** */
 /* extern functions */
 
@@ -120,4 +128,35 @@ extern va_stream_t *va_xprintf_last_char32_pp_utf32(
 {
     s->opt |= VA_OPT_LAST;
     return va_xprintf_char32_pp_utf32(s,x);
+}
+
+extern unsigned va_arr32_p_take_utf32(
+    va_read_iter_t *iter_super,
+    void const *end)
+{
+    assert(iter_super->cur != NULL);
+    va_read_iter_end_t *iter= va_boxof(*iter, iter_super, super);
+    if (iter_super->cur == iter->end) {
+        return 0;
+    }
+    return va_char32_p_take_utf32(iter_super, end);
+}
+
+extern va_stream_t *va_xprintf_arr32_p_utf32(
+    va_stream_t *s,
+    va_arr32_t const *x)
+{
+    va_read_iter_end_t iter = {
+        .super = VA_READ_ITER(&va_arr32_p_read_vtab_utf32, x->data),
+        .end = x->data + x->size
+    };
+    return va_xprintf_iter(s, &iter.super);
+}
+
+extern va_stream_t *va_xprintf_last_arr32_p_utf32(
+    va_stream_t *s,
+    va_arr32_t const *x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_arr32_p_utf32(s,x);
 }

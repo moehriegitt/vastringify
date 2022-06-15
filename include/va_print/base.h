@@ -151,6 +151,31 @@ extern "C" {
 /** get the size of an array, counting the number of elements */
 #define va_countof(A) (sizeof(A)/sizeof((A)[0]))
 
+/**
+ * Return the pointer to a surrounding structure from a pointer to a
+ * slot inside that structure.
+ *
+ * This is complex, because (1) _Target may be an expression or a
+ * type, (2) this infers the constness of the pointer and returns the
+ * right type, (3) is also robust against passing a const type for
+ * _Target, and (4) this checks that the passed struct's slot type is
+ * actually compatible with the passed value.
+ *
+ * Without that magic, this would be a one-liner around offsetof().
+ */
+#define va_boxof(_Target, _val, _slot) \
+    ({ \
+        __typeof__(*(_val)) *val_ = (_val); \
+        typedef __typeof__(_Target) _Type; \
+        _Type *r_ = (_Type*)(((size_t)val_) - offsetof(_Type, _slot)); \
+        __auto_type r2_ = _Generic(0 ? val_ : (void*)1, \
+            void * : r_, \
+            void const * : (_Type const *)r_); \
+        __typeof__(r2_->_slot) *val2_ = val_; \
+        (void)val2_; \
+        r2_; \
+    })
+
 /* ********************************************************************** */
 /* types */
 
@@ -234,6 +259,15 @@ typedef struct va_read_iter {
     void const *cur;
 } va_read_iter_t;
 
+/**
+ * A derived read_iter with an additional 'size' argument for
+ * the _take function to have an additional end condition.
+ */
+typedef struct {
+    va_read_iter_t super;
+    void const *end;
+} va_read_iter_end_t;
+
 typedef struct va_stream va_stream_t;
 
 /**
@@ -277,6 +311,27 @@ struct va_stream {
     unsigned opt;
     unsigned _opt2;
 };
+
+/**
+ * A length delimited char array for printing of non-NUL terminated strings. */
+typedef struct va_arr {
+    size_t size;
+    char const *data;
+} va_arr_t;
+
+/**
+ * A length delimited 32-bit char array for printing of non-NUL terminated strings. */
+typedef struct va_arr16 {
+    size_t size;
+    char16_t const *data;
+} va_arr16_t;
+
+/**
+ * A length delimited 32-bit char array for printing of non-NUL terminated strings. */
+typedef struct va_arr32 {
+    size_t size;
+    char32_t const *data;
+} va_arr32_t;
 
 /* error handling */
 

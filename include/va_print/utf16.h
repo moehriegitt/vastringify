@@ -23,10 +23,16 @@ extern "C" {
 
 extern va_read_iter_vtab_t const va_char16_p_read_vtab_utf16;
 
+extern va_read_iter_vtab_t const va_arr16_p_read_vtab_utf16;
+
 /* ********************************************************************** */
 /* extern functions */
 
 extern unsigned va_char16_p_take_utf16(
+    va_read_iter_t *,
+    void const *end);
+
+extern unsigned va_arr16_p_take_utf16(
     va_read_iter_t *,
     void const *end);
 
@@ -72,6 +78,14 @@ extern va_stream_t *va_xprintf_last_char16_const_pp_utf16(
 extern va_stream_t *va_xprintf_last_char16_pp_utf16(
     va_stream_t *,
     char16_t **);
+
+extern va_stream_t *va_xprintf_arr16_p_utf16(
+    va_stream_t *,
+    va_arr16_t const *);
+
+extern va_stream_t *va_xprintf_last_arr16_p_utf16(
+    va_stream_t *,
+    va_arr16_t const *);
 
 /* ********************************************************************** */
 /* epilogue */

@@ -638,6 +638,30 @@ int main(void)
 
     va_printf("M2o;;a5c;a~u~uc", (void*)5); va_printf("\n");
 
+    va_printf("M2p;;abcd;a~sd", (&(va_arr32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M2p;;ad;a~sd", (&(va_arr32_t){ .data = U"bcdefg", .size = 0 })); va_printf("\n");
+    va_printf("M2p;;ad;a~sd", (&(va_arr32_t){ .data = NULL, .size = 0 })); va_printf("\n");
+    va_printf("M2q;;abcd;a~.3sd", (&(va_arr32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M2q;;abd;a~.1sd", (&(va_arr32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M2q;;ad;a~.0sd", (&(va_arr32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M2r;;a\"bc\"d;a~qsd", (&(va_arr32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
+
+    va_printf("M3p;;abcd;a~sd", (&(va_arr16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M3p;;ad;a~sd", (&(va_arr16_t){ .data = u"bcdefg", .size = 0 })); va_printf("\n");
+    va_printf("M3p;;ad;a~sd", (&(va_arr16_t){ .data = NULL, .size = 0 })); va_printf("\n");
+    va_printf("M3q;;abcd;a~.3sd", (&(va_arr16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M3q;;abd;a~.1sd", (&(va_arr16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M3q;;ad;a~.0sd", (&(va_arr16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M3r;;a\"bc\"d;a~qsd", (&(va_arr16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
+
+    va_printf("M4p;;abcd;a~sd", (&(va_arr_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M4p;;ad;a~sd", (&(va_arr_t){ .data = "bcdefg", .size = 0 })); va_printf("\n");
+    va_printf("M4p;;ad;a~sd", (&(va_arr_t){ .data = NULL, .size = 0 })); va_printf("\n");
+    va_printf("M4q;;abcd;a~.3sd", (&(va_arr_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M4q;;abd;a~.1sd", (&(va_arr_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M4q;;ad;a~.0sd", (&(va_arr_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M4r;;a\"bc\"d;a~qsd", (&(va_arr_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
+
     /* UTF8/16 end of string handling */
     PRINTF2("abc", "~s", va_nprintf(4, "~s", "abcdefg"));
     PRINTF2("ab\xe2", "~s", va_nprintf(4, "~s", "ab\u201ccdefg"));
