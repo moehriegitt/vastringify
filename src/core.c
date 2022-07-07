@@ -3,10 +3,6 @@
 
 #include <assert.h>
 #include <string.h>
-#if 0
-#include <stdio.h>
-#warning stdio.h
-#endif
 #include "va_print/core.h"
 #include "va_print/impl.h"
 
@@ -31,7 +27,9 @@ static char const *digit2_b32[2] = {
 /* ********************************************************************** */
 /* static functions */
 
-static void render(va_stream_t *s, unsigned c)
+#define render va_stream_render
+
+extern void va_stream_render(va_stream_t *s, unsigned c)
 {
     if (c == 0) {
         return;
@@ -44,27 +42,31 @@ static void render(va_stream_t *s, unsigned c)
     }
 }
 
-static unsigned char va_quote_sh(unsigned c)
+static bool check_quote_sh(va_stream_t *s, unsigned c)
 {
-    if ((c >= 'a') && (c <= 'z')) { return 0; }
-    if ((c >= 'A') && (c <= 'Z')) { return 0; }
-    if ((c >= '0') && (c <= '9')) { return 0; }
+    s->qctxt = 1; /* the string is not empty */
+    if ((c >= 'a') && (c <= 'z')) { return false; }
+    if ((c >= 'A') && (c <= 'Z')) { return false; }
+    if ((c >= '0') && (c <= '9')) { return false; }
     switch (c) {
-    case '.': return 0;
-    case '/': return 0;
-    case ',': return 0;
-    case '_': return 0;
-    case '-': return 0;
-    case '+': return 0;
-    default:  return 1;
+    case '.': return false;
+    case '/': return false;
+    case ',': return false;
+    case '_': return false;
+    case '-': return false;
+    case '+': return false;
+    default:  return true;
     }
 }
 
-static unsigned char va_quote_c(unsigned c)
+static bool check_flush_sh(va_stream_t *s)
+{
+    return (s->qctxt == 0); /* quote if the string empty */
+}
+
+static unsigned char va_quote1_c(unsigned c)
 {
     switch (c) {
-    case '\b': return 'b';
-    case '\f': return 'f';
     case '\n': return 'n';
     case '\r': return 'r';
     case '\t': return 't';
@@ -75,7 +77,7 @@ static unsigned char va_quote_c(unsigned c)
     }
 }
 
-static void render_quote_oct(
+extern void va_stream_render_quote_oct(
     va_stream_t *s,
     unsigned c)
 {
@@ -85,7 +87,7 @@ static void render_quote_oct(
     render(s, '0' + ((c >> 0) & 7));
 }
 
-static void render_quote_unicode(
+extern void va_stream_render_quote_u(
     va_stream_t *s,
     unsigned c)
 {
@@ -113,6 +115,7 @@ static void iter_start(
     void const *start)
 {
     VA_BSET(s->opt, VA_OPT_EMORE, 0);
+    s->qctxt = 0;
     iter->cur = start;
 }
 
@@ -123,10 +126,13 @@ static unsigned iter_take(
 {
     if (iter->cur == NULL) {
         va_stream_set_error(s, VA_E_NULL);
-        return 0;
+        return VA_U_EOT;
     }
 
     unsigned c = iter->vtab->take(iter, end);
+    if (c == VA_U_EOT) {
+        return c;
+    }
 
     /* if no more continued errors are allowed, then clear ECONT flag
      * so that at least one REPLACEMENT_CHAR is output. */
@@ -158,61 +164,146 @@ static unsigned iter_take(
     return c;
 }
 
-static void render_quotec(
+static void render_quote_c(
     va_stream_t *s,
     unsigned c)
 {
-    unsigned c2;
-    switch (VA_BGET(s->opt, VA_OPT_QUOTE)) {
-    case VA_QUOTE_C:
-    case VA_QUOTE_J:
-        if (s->opt & VA_OPT_ZERO) {
-            if (c & VA_U_ENC) {
-                if (c & VA_U_ECONT) {
-                    return;
-                }
-                c = VA_U_REPLACEMENT;
+    if (s->opt & VA_OPT_ZERO) {
+        if (c & VA_U_ENC) {
+            if (c & VA_U_ECONT) {
+                return;
             }
-            else
-            if (!va_u_valid(c)) {
-                va_stream_set_error(s, VA_E_ENCODE);
-                c = VA_U_REPLACEMENT;
-            }
+            c = VA_U_REPLACEMENT;
         }
-
-        c2 = va_quote_c(c);
-        if (c2 > 0) {
-            render(s, '\\');
-            render(s, c2);
-            return;
+        else if (!va_u_valid(c)) {
+            va_stream_set_error(s, VA_E_ENCODE);
+            c = VA_U_REPLACEMENT;
         }
-        if ((c < 0x20) || (c == 0x7f)) {
-            if (VA_BGET(s->opt,VA_OPT_QUOTE) == VA_QUOTE_C) {
-                render_quote_oct(s, c);
-            }
-            else {
-                render_quote_unicode(s, c);
-            }
-            return;
-        }
-        if (((s->opt & VA_OPT_ZERO) != 0) && (c >= 0x80)) {
-            render_quote_unicode(s, c);
-            return;
-        }
-        break;
-
-    case VA_QUOTE_SH:
-        if (c == '\'') {
-            render(s, '\'');
-            render(s, '\\');
-            render(s, '\'');
-            render(s, '\'');
-            return;
-        }
-        break;
     }
 
-    render(s, c);
+    unsigned c2 = va_quote1_c(c);
+    if (c2 > 0) {
+        render(s, '\\');
+        render(s, c2);
+        return;
+    }
+    if ((c < 0x20) || (c == 0x7f)) {
+        va_stream_render_quote_oct(s, c);
+        return;
+    }
+    if (((s->opt & VA_OPT_ZERO) != 0) && (c >= 0x80)) {
+        va_stream_render_quote_u(s, c);
+        return;
+    }
+
+    va_stream_render(s, c);
+}
+
+static va_quotation_t quote_c = {
+    .delim = { VA_DELIM(0xff, '\'', '\''), VA_DELIM(0xff, '"', '"') },
+    .check_quote = NULL,
+    .render_quote = render_quote_c,
+};
+
+static void render_quote_j(
+    va_stream_t *s,
+    unsigned c)
+{
+    if (s->opt & VA_OPT_ZERO) {
+        if (c & VA_U_ENC) {
+            if (c & VA_U_ECONT) {
+                return;
+            }
+            c = VA_U_REPLACEMENT;
+        }
+        else
+        if (!va_u_valid(c)) {
+            va_stream_set_error(s, VA_E_ENCODE);
+            c = VA_U_REPLACEMENT;
+        }
+    }
+
+    unsigned c2 = va_quote1_c(c);
+    if (c2 > 0) {
+        render(s, '\\');
+        render(s, c2);
+        return;
+    }
+    if ((c < 0x20) || (c == 0x7f)) {
+        va_stream_render_quote_u(s, c);
+        return;
+    }
+    if (((s->opt & VA_OPT_ZERO) != 0) && (c >= 0x80)) {
+        va_stream_render_quote_u(s, c);
+        return;
+    }
+    va_stream_render(s, c);
+}
+
+static va_quotation_t quote_j = {
+    .delim = { VA_DELIM(0, '\'', '\''), VA_DELIM(0, '"', '"') },
+    .check_quote = NULL,
+    .render_quote = render_quote_j,
+};
+
+static void render_quote_sh(
+    va_stream_t *s,
+    unsigned c)
+{
+    if (c == '\'') {
+        render(s, '\'');
+        render(s, '\\');
+        render(s, '\'');
+        render(s, '\'');
+        return;
+    }
+    va_stream_render(s, c);
+}
+
+static va_quotation_t quote_sh = {
+    .delim = { VA_DELIM(0, '\'', '\''), VA_DELIM(0, '\'', '\'') },
+    .check_quote = check_quote_sh,
+    .check_flush = check_flush_sh,
+    .render_quote = render_quote_sh,
+};
+
+static va_quotation_t const *va_quote[VA_MASK(VA_OPT_QUOTE) + 1] = {
+    [VA_QUOTE_q] = &quote_c,
+    [VA_QUOTE_Q] = &quote_j,
+    [VA_QUOTE_k] = &quote_sh,
+};
+
+extern va_quotation_t const *va_quotation_set(
+    unsigned which,
+    va_quotation_t const *quotation)
+{
+    which &= VA_MASK(VA_OPT_QUOTE);
+    va_quotation_t const *old = va_quote[which];
+    va_quote[which] = quotation;
+    return old;
+}
+
+static void render_quote_put(
+    va_stream_t *s,
+    unsigned c)
+{
+    va_quotation_t const *q = va_quote[VA_BGET(s->opt, VA_OPT_QUOTE)];
+    if (q != NULL) {
+        VA_POSSIBLE_CALL("render_quote_c");
+        VA_POSSIBLE_CALL("render_quote_j");
+        VA_POSSIBLE_CALL("render_quote_sh");
+        return q->render_quote(s, c);
+    }
+    va_stream_render(s, c);
+}
+
+static void render_quote_flush(
+    va_stream_t *s)
+{
+    va_quotation_t const *q = va_quote[VA_BGET(s->opt, VA_OPT_QUOTE)];
+    if ((q != NULL) && (q->render_flush != NULL)) {
+        return q->render_flush(s);
+    }
 }
 
 static void render_int(
@@ -265,8 +356,14 @@ static void render_iter_algo(va_stream_t *s, va_read_iter_t *iter)
 {
     if (iter->cur == NULL) {
         switch (VA_BGET(s->opt, VA_OPT_QUOTE)) {
-        case VA_QUOTE_C: render_rawstr(s, "NULL"); return;
-        case VA_QUOTE_J: render_rawstr(s, "null"); return;
+        case VA_QUOTE_q:
+            render_rawstr(s, "NULL");
+            return;
+
+        case VA_QUOTE_K:
+        case VA_QUOTE_Q:
+            render_rawstr(s, "null");
+            return;
         }
     }
 
@@ -279,46 +376,54 @@ static void render_iter_algo(va_stream_t *s, va_read_iter_t *iter)
 
     /* quotation marks */
     unsigned ch;
-    unsigned delim = 0; /* byte 0 is count, byte 1 is prefix, byte 2 is delim */
+    unsigned long long delim = 0;
     if ((s->opt & VA_OPT_VAR) == 0) {
-        switch (VA_BGET(s->opt, VA_OPT_QUOTE)) {
-        case VA_QUOTE_C:
-            delim = (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR) ? '\'' : '"';
-            delim = 2 + (delim << 16);
-            if ((VA_BGET(s->opt, VA_OPT_SIGN) == VA_SIGN_ZEXT) &&
-                (iter->vtab->str_prefix))
-            {
-                delim += 1 + ((unsigned)(iter->vtab->str_prefix) << 8);
+        va_quotation_t const *q = va_quote[VA_BGET(s->opt, VA_OPT_QUOTE)];
+        if (q != NULL) {
+            if (q->check_quote == NULL) {
+                delim = q->delim[VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR ? 0 : 1];
             }
-            break;
-        case VA_QUOTE_J:
-            delim = (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR) ? '\'' : '"';
-            delim = 2 + (delim << 16);
-            break;
-        case VA_QUOTE_SH:
-            for (iter_start(s,iter,start); (ch = iter_take(s,iter,end)) != 0;) {
-                if (va_quote_sh(ch)) {
-                    delim = '\'';
-                    delim = 2 + (delim << 16);
-                    break;
+            else {
+                for (iter_start(s,iter,start); (ch = iter_take(s,iter,end)) != VA_U_EOT;) {
+                    VA_POSSIBLE_CALL("check_quote_sh");
+                    if (q->check_quote(s, ch)) {
+                        delim |= q->delim[VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR ? 0 : 1];
+                        goto done_check_quote;
+                    }
                 }
+                if (start != NULL) {
+                    VA_POSSIBLE_CALL("check_flush_sh");
+                    if (q->check_flush && q->check_flush(s)) {
+                        delim |= q->delim[VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR ? 0 : 1];
+                    }
+                }
+            done_check_quote:;
             }
-            break;
         }
     }
+    if (VA_DELIM_PREFIX(delim) == 0xff) {
+        delim ^= VA_DELIM(0xff, 0, 0);
+        if ((VA_BGET(s->opt, VA_OPT_SIGN) == VA_SIGN_ZEXT) &&
+            (iter->vtab->str_prefix))
+        {
+            delim += VA_DELIM(iter->vtab->str_prefix, 0, 0);
+        }
+    }
+    delim += 0U + !!VA_DELIM_FRONT(delim) + !!VA_DELIM_BACK(delim) + !!VA_DELIM_PREFIX(delim);
 
     /* reinterpret 'width' into how many spaces are written */
     if ((s->opt & VA_OPT_MINUS) == 0) {
-        if (s->width <= (delim & 0xff)) {
+        if (s->width <= VA_DELIM_WIDTH(delim)) {
             s->width = 0;
         }
         else {
-            s->width -= (delim & 0xff);
+            s->width -= VA_DELIM_WIDTH(delim);
             s->opt |= VA_OPT_SIM;
             iter_start(s,iter,start);
-            while ((s->width > 0) && ((ch = iter_take(s,iter,end)) != 0)) {
-                render_quotec(s, ch);
+            while ((s->width > 0) && ((ch = iter_take(s,iter,end)) != VA_U_EOT)) {
+                render_quote_put(s, ch);
             }
+            render_quote_flush(s);
             VA_MCLR(s->opt, VA_OPT_SIM);
 
             /* space */
@@ -329,12 +434,13 @@ static void render_iter_algo(va_stream_t *s, va_read_iter_t *iter)
     }
 
     /* meat */
-    render(s, (delim >> 8)  & 0xff);
-    render(s, (delim >> 16) & 0xff);
-    for (iter_start(s,iter,start); (ch = iter_take(s,iter,end)) != 0;) {
-        render_quotec(s, ch);
+    render(s, VA_DELIM_PREFIX(delim));
+    render(s, VA_DELIM_FRONT(delim));
+    for (iter_start(s,iter,start); (ch = iter_take(s,iter,end)) != VA_U_EOT;) {
+        render_quote_put(s, ch);
     }
-    render(s, (delim >> 16) & 0xff);
+    render_quote_flush(s);
+    render(s, VA_DELIM_BACK(delim));
 
     /* space */
     while (s->width > 0) {
@@ -354,7 +460,101 @@ static void render_iter(va_stream_t *s, va_read_iter_t *iter, void const *start)
         return;
     }
     render_iter_algo(s, iter);
-    return;
+}
+
+typedef struct {
+    va_stream_t s;
+    va_stream_t *dst;
+    size_t info;
+    va_quotation_t const *q;
+} stream_redirect_t;
+
+static void custom_needquote(va_stream_t *s_, unsigned c)
+{
+    stream_redirect_t *s = (stream_redirect_t*)s_;
+    if (s->q->check_quote(s->dst, c)) {
+        s->info = 1;
+    }
+}
+
+static void custom_put(va_stream_t *s_, unsigned c)
+{
+    stream_redirect_t *s = (stream_redirect_t*)s_;
+    render_quote_put(s->dst, c);
+}
+
+static va_stream_vtab_t custom_needquote_vtab = {
+    .put = custom_needquote,
+};
+
+static va_stream_vtab_t custom_put_vtab = {
+    .put = custom_put,
+};
+
+static void render_custom(va_stream_t *s, va_print_t *print)
+{
+    stream_redirect_t s2 = { VA_STREAM(NULL), s, 0, 0 };
+    print->width = s->width;
+    print->prec = s->prec;
+    print->opt = s->opt;
+
+    assert(print->print != NULL);
+
+    /* quotation marks */
+    unsigned long long delim = 0;
+    if ((s->opt & VA_OPT_VAR) == 0) {
+        s2.q = va_quote[VA_BGET(s->opt, VA_OPT_QUOTE)];
+        if (s2.q != NULL) {
+            if (s2.q->check_quote == NULL) {
+                delim = s2.q->delim[VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR ? 0 : 1];
+            }
+            else {
+                s2.s.vtab = &custom_needquote_vtab;
+                s2.info = 0;
+                print->print(&s2.s, print);
+                if ((s2.info != 0) || (s2.q->check_flush && s2.q->check_flush(s))) {
+                    delim |= s2.q->delim[VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_CHAR ? 0 : 1];
+                }
+            }
+        }
+    }
+
+    /* prefix is not handled here: the input is not an 'iter' with a size */
+    delim += 0U + !!VA_DELIM_BACK(delim) + !!VA_DELIM_PREFIX(delim);
+
+    s2.s.vtab = &custom_put_vtab;
+
+    /* reinterpret 'width' into how many spaces are written */
+    if ((s->opt & VA_OPT_MINUS) == 0) {
+        if (s->width <= VA_DELIM_WIDTH(delim)) {
+            s->width = 0;
+        }
+        else {
+            s->width -= VA_DELIM_WIDTH(delim);
+            s->opt |= VA_OPT_SIM;
+            print->width = s->width;
+            print->print(&s2.s, print);
+            render_quote_flush(s);
+            VA_MCLR(s->opt, VA_OPT_SIM);
+
+            /* space */
+            while (s->width > 0) {
+                render(s, ' ');
+            }
+        }
+    }
+
+    /* meat */
+    render(s, VA_DELIM_FRONT(delim));
+    print->width = s->width;
+    print->print(&s2.s, print);
+    render_quote_flush(s);
+    render(s, VA_DELIM_BACK(delim));
+
+    /* space */
+    while (s->width > 0) {
+        render(s, ' ');
+    }
 }
 
 static inline unsigned get_prec(va_stream_t *s, unsigned def)
@@ -476,7 +676,7 @@ static void render_int(
 static unsigned arr1_utf64_take(va_read_iter_t *iter, void const *end)
 {
     if ((iter->cur == end) || (iter->cur == NULL)) {
-        return 0;
+        return VA_U_EOT;
     }
     unsigned long long x = *(unsigned long long const *)iter->cur;
     iter->cur = NULL;
@@ -500,6 +700,7 @@ static va_read_iter_vtab_t const arr1_vtab_8 = {
     NULL,
     arr1_utf64_take,
     arr1_utf64_end,
+    true,
     0,
     {0},
 };
@@ -508,6 +709,7 @@ static va_read_iter_vtab_t const arr1_vtab_16 = {
     NULL,
     arr1_utf64_take,
     arr1_utf64_end,
+    true,
     'u',
     {0},
 };
@@ -516,6 +718,7 @@ static va_read_iter_vtab_t const arr1_vtab_32 = {
     NULL,
     arr1_utf64_take,
     arr1_utf64_end,
+    true,
     'U',
     {0},
 };
@@ -557,6 +760,19 @@ static void render_ull(va_stream_t *s, unsigned long long x, unsigned sz)
         return;
     }
     render_int(s, x, 10, 0);
+}
+
+static void render_bool(va_stream_t *s, unsigned long long x)
+{
+    if (VA_BGET(s->opt, VA_OPT_MODE) == VA_MODE_TYPE) {
+        render_rawstr(s, "bool");
+        return;
+    }
+    if (VA_BGET(s->opt, VA_OPT_BASE) >= 2) {
+        render_int(s, x, 10, 0);
+        return;
+    }
+    render_rawstr(s, x ? "true" : "false");
 }
 
 static void render_sll(va_stream_t *s, long long x, unsigned sz)
@@ -624,7 +840,8 @@ static unsigned parse_format(va_stream_t *s)
 again:;
     unsigned c = iter_take(s, iter, NULL);
     /* stay at end of string, regardless of STATE */
-    if (c == 0) {
+    if ((c == 0) || (c == VA_U_EOT)) {
+        /* the format iterator always stops at NUL, too */
         goto end_of_format;
     }
 
@@ -635,7 +852,7 @@ again:;
 
         /* print part between format specifiers */
         for (;;) {
-            if (c == 0) {
+            if ((c == 0) || (c == VA_U_EOT)) {
                 goto end_of_format;
             }
             if (c == VA_SIGIL) {
@@ -732,14 +949,20 @@ end_of_flags:
             case 'z':
                 VA_BSET(s->opt, VA_OPT_SIGN, VA_SIGN_ZEXT);
                 break;
-            case 'Q':
-                VA_BSET(s->opt, VA_OPT_QUOTE, VA_QUOTE_J);
+            case 'k':
+                /* k=1, kk=5: (old << 2) + 1 */
+                VA_BSET(s->opt, VA_OPT_QUOTE, (VA_BGET(s->opt, VA_OPT_QUOTE) << 2) + VA_QUOTE_k);
                 break;
             case 'q':
-                VA_BSET(s->opt, VA_OPT_QUOTE, VA_QUOTE_C);
+                /* q=2, qq=6: (old << 1) + 2 */
+                VA_BSET(s->opt, VA_OPT_QUOTE, (VA_BGET(s->opt, VA_OPT_QUOTE) << 1) + VA_QUOTE_q);
                 break;
-            case 'k':
-                VA_BSET(s->opt, VA_OPT_QUOTE, VA_QUOTE_SH);
+            case 'Q':
+                /* Q=3, QQ=7: (old << 1) | 3 */
+                VA_BSET(s->opt, VA_OPT_QUOTE, (VA_BGET(s->opt, VA_OPT_QUOTE) << 1) | VA_QUOTE_Q);
+                break;
+            case 'K':
+                VA_BSET(s->opt, VA_OPT_QUOTE, VA_QUOTE_K);
                 break;
             }
             c = iter_take_pat(s, iter);
@@ -908,6 +1131,12 @@ static va_stream_t *xprintf_ull(va_stream_t *s, unsigned long long x, unsigned s
     return s;
 }
 
+static va_stream_t *xprintf_bool(va_stream_t *s, unsigned long long x)
+{
+    RENDER_LOOP(s, (long long)x, render_bool(s, x));
+    return s;
+}
+
 /* ********************************************************************** */
 /* extern functions */
 
@@ -917,6 +1146,14 @@ extern va_stream_t *va_xprintf_iter(
 {
     void const *start = x->cur;
     RENDER_LOOP(s, 0, render_iter(s, x, start));
+    return s;
+}
+
+extern va_stream_t *va_xprintf_custom(
+    va_stream_t *s,
+    va_print_t *x)
+{
+    RENDER_LOOP(s, 0, render_custom(s, x));
     return s;
 }
 
@@ -934,6 +1171,11 @@ extern va_stream_t *va_xprintf_ull(va_stream_t *s, unsigned long long x)
 extern va_stream_t *va_xprintf_ulong(va_stream_t *s, unsigned long x)
 {
     return xprintf_ull(s, x, sizeof(x));
+}
+
+extern va_stream_t *va_xprintf_bool(va_stream_t *s, unsigned x)
+{
+    return xprintf_bool(s, x);
 }
 
 extern va_stream_t *va_xprintf_uint(va_stream_t *s, unsigned x)
@@ -1041,6 +1283,12 @@ extern va_stream_t *va_xprintf_last_ushort(va_stream_t *s, unsigned short x)
     return va_xprintf_ushort(s,x);
 }
 
+extern va_stream_t *va_xprintf_last_bool(va_stream_t *s, unsigned int x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_bool(s,x);
+}
+
 extern va_stream_t *va_xprintf_last_uint(va_stream_t *s, unsigned int x)
 {
     s->opt |= VA_OPT_LAST;
@@ -1075,6 +1323,12 @@ extern va_stream_t *va_xprintf_last_iter(va_stream_t *s, va_read_iter_t *x)
 {
     s->opt |= VA_OPT_LAST;
     return va_xprintf_iter(s,x);
+}
+
+extern va_stream_t *va_xprintf_last_custom(va_stream_t *s, va_print_t *x)
+{
+    s->opt |= VA_OPT_LAST;
+    return va_xprintf_custom(s,x);
 }
 
 extern va_stream_t *va_xprintf_last_error_t_p(va_stream_t *s, va_error_t *x)

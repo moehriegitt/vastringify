@@ -55,6 +55,12 @@ extern "C" {
         VA_STREAM(va_char_p_vtab_gen(S)), (S), (N), 0 })
 
 /**
+ * Value of type va_string_char_p_t.
+ * For arrays: finds out the size using va_countof() */
+#define VA_STREAM_CHAR_ARR(S) \
+    VA_STREAM_CHAR_P(S,va_countof(S))
+
+/**
  * Print into given char array up to a given length.
  *
  * The resulting string is always NUL-terminated, but may

@@ -79,6 +79,7 @@ for my $l (file_contents $in_su) {
     }
 }
 
+my %possible_call = ();
 my $cur = undef;
 for my $l (file_contents $in_s) {
     if ($l =~ /^\s*[.]type\s+([.a-zA-Z0-9_]+),\s*\@function\s*$/) {
@@ -101,6 +102,18 @@ for my $l (file_contents $in_s) {
             if ($fun{$other}) {
                 $cur->{$what}{$other} = 1;
             }
+        }
+        elsif ($l =~ /^\s*(call|jmp)\s+[*].*\%/) {
+            my ($what) = ($1);
+            for my $other (keys %possible_call) {
+                if ($fun{$other}) {
+                    $cur->{$what}{$other} = 1;
+                }
+            }
+            %possible_call = ();
+        }
+        elsif ($l =~ /possible_call:\s*\"?([a-z_0-9]+)/) {
+            $possible_call{$1} = 1;
         }
     }
 }

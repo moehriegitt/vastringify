@@ -22,6 +22,23 @@ static void myputc(va_stream_t *s __unused, unsigned c)
     fputc(c & 0xff, stdout);
 }
 
+typedef struct {
+    unsigned r,i;
+} my_value_t;
+
+typedef struct {
+    va_print_t super;
+    my_value_t const *value;
+} my_print_my_value_t;
+
+static void my_print_my_value(va_stream_t *s, va_print_t *p)
+{
+    my_print_my_value_t *v = va_boxof(p, *v, super);
+    va_iprintf(s, "(~s\\~si)", v->value->r, v->value->i);
+}
+
+#define P_VALUE(v) (&((my_print_my_value_t){ VA_PRINT(&my_print_my_value,0), (v) }).super)
+
 static va_stream_vtab_t myvtab[1] = {{ .put = myputc }};
 
 __unused
@@ -169,6 +186,13 @@ int main(void)
 
     PRINTF1("~a", "\ufeffh\uc0c0g\u201ch", "\ufeffh\uc0c0g\u201ch");
 
+    /* Test for W3C best practise recommendation for U+FFFD replacement
+     * ('maximum subpart of an ill-formed sub-sequenece').  See also Unicode
+     * L2/17-344R2 and Public Review Issue #121.  (This library implements
+     * option 2 in the C and Java quotation.)  There is also section 'U+FFFD
+     * Substitution for Maximum Subparts' in The Unicode Standard (Chapter 3 in
+     * Unicode 14.0).
+     */
     PRINTF1(
         "~0qa",
         "\"a\\ufffd\\ufffd\\ufffdb\\ufffdc\\ufffd\\ufffdd\\ufffd\\ufffde\"\n",
@@ -194,6 +218,8 @@ int main(void)
 
     PRINTF1("~kc", "foo", "foo");
     PRINTF1("~ks", "foo", "foo");
+    PRINTF1("a~ksb", "a''b", "");
+    PRINTF1("a~#ksb", "ab", "");
     PRINTF1("~kc", "'foo foo'", "foo foo");
     PRINTF1("~ks", "'foo foo'", "foo foo");
     PRINTF1("~kc", "'foo '\\''foo'", "foo 'foo");
@@ -455,7 +481,49 @@ int main(void)
     PRINTF2("uint32_t   x =     U\'c\',", "~-10t x = ~=8qzc,", (unsigned)'c');
     PRINTF2("uint64_t   x =     U\'c\',", "~-10t x = ~=8qzc,", (unsigned long long)'c');
 
+    PRINTF2("\"\\ufffd\"", "~0qa", U"\xd801");
+
+    PRINTF2("\"\\ufffd\"", "~0qa", "\xc3");
+    PRINTF2("\"\"", "~0.1qa", "\xc3");
+
+    PRINTF2("\"\\ufffd\"", "~0qa", "\xe3");
+    PRINTF2("\"\"", "~0.1qa", "\xe3");
+    PRINTF2("\"\\ufffd\"", "~0qa", "\xe3\x80");
+    PRINTF2("\"\"", "~0.1qa", "\xe3\x80");
+
+    PRINTF2("\"\\ufffd\"", "~0qa", "\xf1");
+    PRINTF2("\"\"", "~0.1qa", "\xf1");
+    PRINTF2("\"\\ufffd\"", "~0qa", "\xf1\x80");
+    PRINTF2("\"\"", "~0.1qa", "\xf1\x80");
+    PRINTF2("\"\\ufffd\"", "~0qa", "\xf1\x80\x80");
+    PRINTF2("\"\"", "~0.1qa", "\xf1\x80\x80");
+
+    PRINTF2("\"\\ufffd\"", "~0qa", u"\xdc01");
+    PRINTF2("\"\"", "~0.1qa", u"\xd801");
     PRINTF2("\"\\ufffd\"", "~0qa", u"\xd801");
+
+    PRINTF2("\"\\000\"", "~0qa", (&(va_span_t){ .size = 1, .data = "" }));
+    PRINTF2("'\\000'", "~0qc", 0);
+
+    PRINTF2("\"\\u0000\"", "~0Qa", (&(va_span_t){ .size = 1, .data = "" }));
+    PRINTF2("'\\u0000'", "~0Qc", 0);
+
+    PRINTF2("1", "~a", true);
+    PRINTF2("true", "~a", (bool)true);
+    PRINTF2("1", "~d", (bool)true);
+    PRINTF2("0", "~a", false);
+    PRINTF2("false", "~a", (bool)false);
+    PRINTF2("0", "~d", (bool)false);
+
+    PRINTF2("int32_t", "~t", false);
+    PRINTF2("bool", "~t", (bool)false);
+
+    enum Foo { A = 0};
+    PRINTF2("int32_t", "~t", A);
+#if 0
+    /* depends -- some compilers use 'unsigned', some 'int'... */
+    PRINTF2("uint32_t", "~t", (enum Foo)0);
+#endif
 
     PRINTF2("ab7c", "a~jb~sc", 6, 7, &e);
     assert(e.code == VA_E_FORMAT);
@@ -638,29 +706,35 @@ int main(void)
 
     va_printf("M2o;;a5c;a~u~uc", (void*)5); va_printf("\n");
 
-    va_printf("M2p;;abcd;a~sd", (&(va_arr32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M2p;;ad;a~sd", (&(va_arr32_t){ .data = U"bcdefg", .size = 0 })); va_printf("\n");
-    va_printf("M2p;;ad;a~sd", (&(va_arr32_t){ .data = NULL, .size = 0 })); va_printf("\n");
-    va_printf("M2q;;abcd;a~.3sd", (&(va_arr32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M2q;;abd;a~.1sd", (&(va_arr32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M2q;;ad;a~.0sd", (&(va_arr32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M2r;;a\"bc\"d;a~qsd", (&(va_arr32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M2p;;abcd;a~sd", (&(va_span32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M2p;;ad;a~sd", (&(va_span32_t){ .data = U"bcdefg", .size = 0 })); va_printf("\n");
+    va_printf("M2p;;ad;a~sd", (&(va_span32_t){ .data = NULL, .size = 0 })); va_printf("\n");
+    va_printf("M2q;;abcd;a~.3sd", (&(va_span32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M2q;;abd;a~.1sd", (&(va_span32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M2q;;ad;a~.0sd", (&(va_span32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M2r;;a\"bc\"d;a~qsd", (&(va_span32_t){ .data = U"bcdefg", .size = 2 })); va_printf("\n");
 
-    va_printf("M3p;;abcd;a~sd", (&(va_arr16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M3p;;ad;a~sd", (&(va_arr16_t){ .data = u"bcdefg", .size = 0 })); va_printf("\n");
-    va_printf("M3p;;ad;a~sd", (&(va_arr16_t){ .data = NULL, .size = 0 })); va_printf("\n");
-    va_printf("M3q;;abcd;a~.3sd", (&(va_arr16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M3q;;abd;a~.1sd", (&(va_arr16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M3q;;ad;a~.0sd", (&(va_arr16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M3r;;a\"bc\"d;a~qsd", (&(va_arr16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M3p;;abcd;a~sd", (&(va_span16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M3p;;ad;a~sd", (&(va_span16_t){ .data = u"bcdefg", .size = 0 })); va_printf("\n");
+    va_printf("M3p;;ad;a~sd", (&(va_span16_t){ .data = NULL, .size = 0 })); va_printf("\n");
+    va_printf("M3q;;abcd;a~.3sd", (&(va_span16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M3q;;abd;a~.1sd", (&(va_span16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M3q;;ad;a~.0sd", (&(va_span16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M3r;;a\"bc\"d;a~qsd", (&(va_span16_t){ .data = u"bcdefg", .size = 2 })); va_printf("\n");
 
-    va_printf("M4p;;abcd;a~sd", (&(va_arr_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M4p;;ad;a~sd", (&(va_arr_t){ .data = "bcdefg", .size = 0 })); va_printf("\n");
-    va_printf("M4p;;ad;a~sd", (&(va_arr_t){ .data = NULL, .size = 0 })); va_printf("\n");
-    va_printf("M4q;;abcd;a~.3sd", (&(va_arr_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M4q;;abd;a~.1sd", (&(va_arr_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M4q;;ad;a~.0sd", (&(va_arr_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
-    va_printf("M4r;;a\"bc\"d;a~qsd", (&(va_arr_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M4p;;abcd;a~sd", (&(va_span_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M4p;;ad;a~sd", (&(va_span_t){ .data = "bcdefg", .size = 0 })); va_printf("\n");
+    va_printf("M4p;;ad;a~sd", (&(va_span_t){ .data = NULL, .size = 0 })); va_printf("\n");
+    va_printf("M4q;;abcd;a~.3sd", (&(va_span_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M4q;;abd;a~.1sd", (&(va_span_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M4q;;ad;a~.0sd", (&(va_span_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
+    va_printf("M4r;;a\"bc\"d;a~qsd", (&(va_span_t){ .data = "bcdefg", .size = 2 })); va_printf("\n");
+
+    my_value_t val1 = { 2, 3 };
+    va_printf("M5a;;(2\\3i);~s", P_VALUE(&val1)); va_printf("\n");
+    va_printf("M5b;;a    (2\\3i)b;a~10sb", P_VALUE(&val1)); va_printf("\n");
+    va_printf("M5b;;a(2\\3i)    b;a~-10sb", P_VALUE(&val1)); va_printf("\n");
+    va_printf("M5b;;a'(2\\\\3i)' b;a~-10qcb", P_VALUE(&val1)); va_printf("\n");
 
     /* UTF8/16 end of string handling */
     PRINTF2("abc", "~s", va_nprintf(4, "~s", "abcdefg"));

@@ -113,27 +113,35 @@ extern "C" {
 #define VA_STATE_SKIP  4 /* next arg should be skipped */
 
 /** quotation */
-#define VA_OPT_QUOTE   (16, 3U)
+#define VA_OPT_QUOTE   (16, 7U)
 /** no quotation */
 #define VA_QUOTE_NONE  0
-/** 'Q' modifier */
-#define VA_QUOTE_SH    1
+/** 'k' modifier */
+#define VA_QUOTE_k     1
 /** 'q' modifier */
-#define VA_QUOTE_C     2
+#define VA_QUOTE_q     2
+/** 'Q' modifier */
+#define VA_QUOTE_Q     3
+/** 'K' modifier */
+#define VA_QUOTE_K     4
+/** 'kk' modifier */
+#define VA_QUOTE_kk    5
 /** 'qq' modifier */
-#define VA_QUOTE_J     3
+#define VA_QUOTE_qq    6
+/** 'QQ' modifier */
+#define VA_QUOTE_QQ    7
 
 /** size specifier mask: normal, 'h', or 'hh'*/
-#define VA_OPT_SIZE   (18, 3U)
+#define VA_OPT_SIZE   (19, 3U)
 
 /** form (2..36) */
-#define VA_OPT_BASE   (20, 0x3fU)
+#define VA_OPT_BASE   (21, 0x3fU)
 
 /** error (0..7) */
-#define VA_OPT_ERR    (26, 7U)
+#define VA_OPT_ERR    (27, 7U)
 
-/** number of following error code units from the decoder: 0..3 */
-#define VA_OPT_EMORE  (29, 3U)
+/** number of following error code units from the decoder: 0..2 */
+#define VA_OPT_EMORE  (30, 3U)
 
 /** mask of resetting print options at end of string */
 #define VA_OPT_RESET_END VA_MASH(VA_OPT_ERR)
@@ -154,6 +162,169 @@ extern "C" {
 #define VA_PREC_NONE VA_PREC_MASK
 /** maximum supported precision */
 #define VA_PREC_MAX  (VA_PREC_MASK-1)
+
+/* custom quotation */
+
+/**
+ * Make a 'delim' entry for a quotation.
+ *
+ * This contains the width of the total quotation
+ */
+#define VA_DELIM(prefix, delimfront, delimback) \
+    (((0ULL|(prefix)) << 8) | \
+     ((0ULL|(delimfront)) << 16) | \
+     ((0ULL|(delimback)) << 32))
+
+#define VA_DELIM_WIDTH(x)  ((unsigned char)  ((x) >> 0))
+#define VA_DELIM_PREFIX(x) ((unsigned char)  ((x) >> 8))
+#define VA_DELIM_FRONT(x)  ((unsigned short) ((x) >> 16))
+#define VA_DELIM_BACK(x)   ((unsigned short) ((x) >> 32))
+
+/**
+ * A virtual table for custom quotation.
+ *
+ * Note that a quotation method needs va_print/impl.h to get
+ * access to va_stream_render*(), va_stream_put(),
+ * va_stream_set_error(), va_u_valid(), and for checking
+ * the current stream options to check (s->opt & VA_OPT_ZERO) etc.
+ */
+typedef struct {
+    /**
+     * The quotation delimiter for char (in [0]) and string (in [1])
+     *
+     * See 'VA_DELIM(prefix, frontquote, backquote) macro for
+     * contructing this.  prefix is in the range 0..0xff, frontquote
+     * and backquote may be 0..0xffff each.
+     *
+     * If 'prefix' in VA_DELIM() is set to 0xff, then if the `z`
+     * modifier is in use, then the size prefix of the string
+     * element is used instead .  I.e., "", "u", or "U" depending
+     * on whether it's char, char16_t, or char32_t.  Yes, this means
+     * that you cannot use LATIN SMALL LETTER Y WITH DIAERESIS as a
+     * string prefix character.
+     */
+    unsigned long long delim[2];
+
+    /**
+     * Whether a character causes the string to need quotation.
+     *
+     * If this is NULL, the string is always quoted (unless the '#'
+     * modifier is given).
+     *
+     * Note that the passed character is in internal encoding:
+     * the lower 24 bits are the actual codepoint payload, while
+     * the upper bits are VA_U_* bits.
+     *
+     * Like in render_quote, context may be stored in s->qctxt.
+     *
+     * Checking is terminated using the check_flush method.  This
+     * together with s->qctxt can be used to quote empty strings
+     * (as needed for shell quotation).
+     */
+    bool (*check_quote)(va_stream_t *s, unsigned);
+
+    /**
+     * Terminate checking for quotation.
+     *
+     * This may be NULL if not needed.
+     *
+     * This is not invoked if the string is NULL, only if the string
+     * is empty ("").  I.e., NULL will not be quoted.
+     *
+     * Note that this will not be invoked if check_quote() already
+     * returned true.
+     */
+    bool (*check_flush)(va_stream_t *s);
+
+    /**
+     * Render/quote a single character.
+     *
+     * During printing, the quotation mechanism may use s->qctxt
+     * for storing state and context information, if necessary.
+     * Rendering always starts with s->qctxt reset to 0.  After
+     * all characters are rendered, render_flush() is invoked
+     * to terminate the rendering.  Note that rendering may
+     * be stopped for internal reasons before the end of the
+     * string, e.g., when counting the width of the string.
+     * In these situations, render_flush() may be invoked
+     * prematurely.  For the actualy rendering, however, the
+     * whole sequence will be invoked.
+     *
+     * The passed character is in internal encoding:
+     * the lower 24-bit are the actual codepoint payload, while
+     * the upper bits are VA_U_* bits.
+     *
+     * For putting characters into the output stream, this must
+     * invoke va_stream_put() or va_stream_render_*() functions.
+     *
+     * This function can determine whether and how the character
+     * should be quoted.  It should also determine based on the
+     * VA_U_* bits whether U+FFFD should be used instead for
+     * printing.
+     */
+    void (*render_quote)(va_stream_t *, unsigned);
+
+    /**
+     * After a string is printed, notify the printer of the
+     * end of the string (maybe there is more to print to
+     * quote correctly).
+     */
+    void (*render_flush)(va_stream_t *);
+} va_quotation_t;
+
+/* ********************************************************************** */
+/* debug and analysis stuff (internal) */
+
+#ifdef VA_STACK
+#define VA_POSSIBLE_CALL(x) __asm__ volatile("// possible_call:" #x)
+#else
+#define VA_POSSIBLE_CALL(x)
+#endif
+
+/* ********************************************************************** */
+/* extern functions */
+
+/**
+ * Put a single single character into the output stream.
+ *
+ * This may also count only, depending on stream mode.
+ *
+ * This or any other va_stream_render*() functino must be used by quotation
+ * methods for putting characters into the output stream -- quotation
+ * methods must not try to be smart and implement their own function for
+ * putting characters into the output stream.
+ */
+extern void va_stream_render(va_stream_t *s, unsigned c);
+
+/**
+ * Uses va_stream_put() to render a three-digit octal escape
+ * sequence like in C, e.g.: \012
+ */
+extern void va_stream_render_quote_oct(
+    va_stream_t *s,
+    unsigned c);
+
+/**
+ * Uses va_stream_put() to render a \u plus four hexadecimal digits
+ * or \U plus eight hexadecimal digits, e.g.: \u2000 or \U0010FFF0.
+ */
+extern void va_stream_render_quote_u(
+    va_stream_t *s,
+    unsigned c);
+
+/**
+ * Set or reset the quotation method VA_QUOTE_{k,q,Q,K,kk,qq,QQ}.
+ * You can even set quotation method 0 to switch normal ~a into
+ * quotation mode.
+ *
+ * This returns the previously set value.
+ *
+ * If quotation == NULL, the corresponding entry will be reset to 'no quotation'.
+ */
+
+extern va_quotation_t const *va_quotation_set(
+    unsigned which,
+    va_quotation_t const *quotation);
 
 /* ********************************************************************** */
 /* static inline functions */

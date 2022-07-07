@@ -163,7 +163,7 @@ extern "C" {
  *
  * Without that magic, this would be a one-liner around offsetof().
  */
-#define va_boxof(_Target, _val, _slot) \
+#define va_boxof(_val, _Target, _slot) \
     ({ \
         __typeof__(*(_val)) *val_ = (_val); \
         typedef __typeof__(_Target) _Type; \
@@ -208,12 +208,28 @@ typedef struct {
     void const *(*end)(struct va_read_iter *, size_t size);
 
     /**
+     * Whether this is a size or NUL terminated string */
+    unsigned char has_size;
+
+    /**
      * C string indicator prefix character */
     unsigned char str_prefix;
 
-    char _pad[sizeof(void*)-1];
+    char _pad[sizeof(void*)-2];
 } va_read_iter_vtab_t;
 
+/**
+ * End of stream marker in internal communication if this library.
+ *
+ *
+ * I.e., the value to be returned by a 'va_read_iter_vtab_t::take'
+ * function if the end of the string is reached.
+ * This is different from 0 so that in size terminated strings
+ * and in chars, U+0000 can be handled correctly, and printed.
+ *
+ * EOT = end of text
+ */
+#define VA_U_EOT -1U
 
 /**
  * String reader type.
@@ -309,29 +325,59 @@ struct va_stream {
     unsigned width;
     unsigned prec;
     unsigned opt;
-    unsigned _opt2;
+    unsigned qctxt;
+};
+
+typedef struct va_print va_print_t;
+
+/**
+ * A printer for a custom type.
+ *
+ * To print a custom type, you can either directly use this
+ * type and store a pointer to your value in 'value', or if
+ * that's not enough info, you can derive a printer type from
+ * this base type into which you encapsulate the value to print.
+ * This library will then invoke the print method to print the
+ * value.
+ *
+ * Before invoking \p vtab.print, the \p width, \p prec, and
+ * \p opt are set up like in the stream into which this is
+ * redirected.
+ */
+struct va_print {
+    void (*print) (va_stream_t *s, va_print_t *);
+    void const *value;
+    unsigned width;
+    unsigned prec;
+    unsigned opt;
+    unsigned _pad1;
 };
 
 /**
+ * Constructor for a va_print_t object.
+ */
+#define VA_PRINT(p_,x_) ((va_print_t){ .print= (p_), .value = (x_) })
+
+/**
  * A length delimited char array for printing of non-NUL terminated strings. */
-typedef struct va_arr {
+typedef struct va_span {
     size_t size;
     char const *data;
-} va_arr_t;
+} va_span_t;
 
 /**
  * A length delimited 32-bit char array for printing of non-NUL terminated strings. */
-typedef struct va_arr16 {
+typedef struct va_span16 {
     size_t size;
     char16_t const *data;
-} va_arr16_t;
+} va_span16_t;
 
 /**
  * A length delimited 32-bit char array for printing of non-NUL terminated strings. */
-typedef struct va_arr32 {
+typedef struct va_span32 {
     size_t size;
     char32_t const *data;
-} va_arr32_t;
+} va_span32_t;
 
 /* error handling */
 

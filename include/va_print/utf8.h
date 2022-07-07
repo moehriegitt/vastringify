@@ -22,7 +22,7 @@ extern "C" {
 
 extern va_read_iter_vtab_t const va_char_p_read_vtab_utf8;
 
-extern va_read_iter_vtab_t const va_arr_p_read_vtab_utf8;
+extern va_read_iter_vtab_t const va_span_p_read_vtab_utf8;
 
 /* ********************************************************************** */
 /* extern functions */
@@ -55,7 +55,7 @@ extern unsigned va_char_p_take_utf8(
 /**
  * Same for arrays (length delimited strings)
  */
-extern unsigned va_arr_p_take_utf8(
+extern unsigned va_span_p_take_utf8(
     va_read_iter_t *,
     void const *end);
 
@@ -106,13 +106,13 @@ extern va_stream_t *va_xprintf_last_char_pp_utf8(
     va_stream_t *,
     char **);
 
-extern va_stream_t *va_xprintf_arr_p_utf8(
+extern va_stream_t *va_xprintf_span_p_utf8(
     va_stream_t *,
-    va_arr_t const *);
+    va_span_t const *);
 
-extern va_stream_t *va_xprintf_last_arr_p_utf8(
+extern va_stream_t *va_xprintf_last_span_p_utf8(
     va_stream_t *,
-    va_arr_t const *);
+    va_span_t const *);
 
 /* ********************************************************************** */
 /* epilogue */

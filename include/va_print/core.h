@@ -75,12 +75,13 @@ extern "C" {
     char32_t *:VA_CONCAT(fun##char32_p_,va_char32_p_decode), \
     char32_t const **:VA_CONCAT(fun##char32_const_pp_,va_char32_p_decode), \
     char32_t **:VA_CONCAT(fun##char32_pp_,va_char32_p_decode), \
-    va_arr_t const *:VA_CONCAT(fun##arr_p_,va_char_p_decode), \
-    va_arr_t *:VA_CONCAT(fun##arr_p_,va_char_p_decode), \
-    va_arr16_t const *:VA_CONCAT(fun##arr16_p_,va_char16_p_decode), \
-    va_arr16_t *:VA_CONCAT(fun##arr16_p_,va_char16_p_decode), \
-    va_arr32_t const *:VA_CONCAT(fun##arr32_p_,va_char32_p_decode), \
-    va_arr32_t *:VA_CONCAT(fun##arr32_p_,va_char32_p_decode), \
+    va_span_t const *:VA_CONCAT(fun##span_p_,va_char_p_decode), \
+    va_span_t *:VA_CONCAT(fun##span_p_,va_char_p_decode), \
+    va_span16_t const *:VA_CONCAT(fun##span16_p_,va_char16_p_decode), \
+    va_span16_t *:VA_CONCAT(fun##span16_p_,va_char16_p_decode), \
+    va_span32_t const *:VA_CONCAT(fun##span32_p_,va_char32_p_decode), \
+    va_span32_t *:VA_CONCAT(fun##span32_p_,va_char32_p_decode), \
+    bool:fun##bool, \
     unsigned char:fun##uchar, \
     unsigned short:fun##ushort, \
     unsigned int:fun##uint, \
@@ -92,6 +93,7 @@ extern "C" {
     int:fun##sint, \
     long:fun##slong, \
     long long:fun##sll, \
+    va_print_t *:fun##custom, \
     va_read_iter_t *:fun##iter, \
     va_error_t *:fun##error_t_p, \
     default:fun##ptr)(s,x)
@@ -209,6 +211,7 @@ extern va_stream_t *va_xprintf_sll(va_stream_t *, long long x);
 
 extern va_stream_t *va_xprintf_uchar(va_stream_t *, unsigned char x);
 extern va_stream_t *va_xprintf_ushort(va_stream_t *, unsigned short x);
+extern va_stream_t *va_xprintf_bool(va_stream_t *, unsigned int x);
 extern va_stream_t *va_xprintf_uint(va_stream_t *, unsigned int x);
 extern va_stream_t *va_xprintf_ulong(va_stream_t *, unsigned long x);
 extern va_stream_t *va_xprintf_ull(va_stream_t *, unsigned long long x);
@@ -218,6 +221,7 @@ extern va_stream_t *va_xprintf_char(va_stream_t *, char x);
 extern va_stream_t *va_xprintf_error_t_p(va_stream_t *, va_error_t *x);
 
 extern va_stream_t *va_xprintf_iter(va_stream_t *, va_read_iter_t *);
+extern va_stream_t *va_xprintf_custom(va_stream_t *, va_print_t *);
 
 extern va_stream_t *va_xprintf_last_schar(va_stream_t *, signed char x);
 extern va_stream_t *va_xprintf_last_short(va_stream_t *, short x);
@@ -227,6 +231,7 @@ extern va_stream_t *va_xprintf_last_sll(va_stream_t *, long long x);
 
 extern va_stream_t *va_xprintf_last_uchar(va_stream_t *, unsigned char x);
 extern va_stream_t *va_xprintf_last_ushort(va_stream_t *, unsigned short x);
+extern va_stream_t *va_xprintf_last_bool(va_stream_t *, unsigned int x);
 extern va_stream_t *va_xprintf_last_uint(va_stream_t *, unsigned int x);
 extern va_stream_t *va_xprintf_last_ulong(va_stream_t *, unsigned long x);
 extern va_stream_t *va_xprintf_last_ull(va_stream_t *, unsigned long long x);
@@ -236,6 +241,7 @@ extern va_stream_t *va_xprintf_last_char(va_stream_t *, char x);
 extern va_stream_t *va_xprintf_last_error_t_p(va_stream_t *, va_error_t *x);
 
 extern va_stream_t *va_xprintf_last_iter(va_stream_t *, va_read_iter_t *);
+extern va_stream_t *va_xprintf_last_custom(va_stream_t *, va_print_t *);
 
 /**
  * Set the iterator. */

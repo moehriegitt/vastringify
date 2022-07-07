@@ -103,7 +103,7 @@ size_t
 va_gzprintf(CharType, Char const *format, ...);
 
 va_stream_charp_t
-VA_STREAM_CHAR_P(Char const *s, size_t n);
+VA_STREAM_CHAR_P(Char *s, size_t n);
 
 
 #include <va_print/alloc.h>
@@ -310,7 +310,7 @@ number of raw code units read from the input string (not the number
 of converted code points, but the low-level number of elements
 in the string, so that non-NUL terminated arrays can be printed
 with their size passed as precision, even with multi-byte/multi-word
-encodings stored inside.  Alternatively, there is `va_arr_t` for a
+encodings stored inside.  Alternatively, there is `va_span_t` for a
 string prefix parameter type.
 
 The input decoder will not read incomplete encodings at the end of
@@ -395,8 +395,9 @@ from the following list.
 
  - `c` prints integers (but not pointers) as characters, like a
    one-element string.  Note that the NUL character is not printed,
-   but behaves like an empty string.  For string quotation where
-   hexadecimals are printed, this uses lower case characters.
+   but behaves like an empty string, unless quotation is used.
+   For string quotation where hexadecimals are printed, this uses
+   lower case characters.
 
  - `a`, `f`, and `g` print like `s`, but will print differently when
    floating point support is added.
@@ -426,9 +427,12 @@ from the following list.
  - any combination of format character and type not mentioned above
    prints in default notation.
 
-## Function Parameters
+## Parameter Types
 
-The following function parameter types are recognised:
+The following function parameter types are recognised.  Note that
+enums are not listed here, because of the weak type system of C, where
+enum constants have type 'int' and enum types match type 'int' in
+_Generic.
 
  - `int`, `unsigned`, `char`, `signed char`, `unsigned char`, `short`,
    `unsigned short`, `long`, `unsigned long`, `long long`,
@@ -442,6 +446,14 @@ The following function parameter types are recognised:
 
    Also note that character constants like `'a'` have type `int` in C
    and print numerically by default.
+
+ - `_Bool` (or `bool` with `<stdbool.h>`): prints a boolean type.
+   This is the only enum in C that does not match an `int` type in
+   `_Generic`, so it is supported.  Note that `true` and `false` still
+   have type `int` and not `bool`, so only variables of type `bool`
+   will print in boolean mode.  This prints `true` or `false` by
+   default or `0` and `1` if a numeric format is used: `d`, `u`,
+   `x`, `o`, `b`.
 
  - `char *`, `char const *`: 8-bit character strings or
    arrays.  They print as is by default.
@@ -505,14 +517,22 @@ The following function parameter types are recognised:
    define a proper `va_read_iter_t`, which are not all
    documented here.
 
- - `va_arr_t*`: this is a length delimited string for printing
+ - `va_span_t*`: this is a length delimited string for printing
    non-NUL terminated strings or prefixes of strings.  It is
    an alternative way to specify the string size in the argument
    directly instead of using the precision in the format specifier.
+   When strings are specified this way, embedded U+0000 (NUL)
+   characters are passed down, so quotation may print them as
+   \u0000 or \000 or similar.  NUL characters are never printed
+   verbatim into the output stream, however, because the output
+   stream is assumed to be text.
 
- - `va_arr16_t*`: the same as `va_arr_t`, but for `char16_t` strings.
+ - `va_span16_t*`: the same as `va_span_t`, but for `char16_t` strings.
 
- - `va_arr32_t*`: the same as `va_arr_t`, but for `char32_t` strings.
+ - `va_span32_t*`: the same as `va_span_t`, but for `char32_t` strings.
+
+ - `va_print_t*`: user-defined printer for a value of an arbitrary
+   type (there is a separate chapter on this, below).
 
  - anything else: is tried to be converted to a pointer and
    printed in hexadecimal encoding by default, i.e., in `~x`
@@ -528,8 +548,9 @@ The following function parameter types are recognised:
 
 To print into an string of characters up to a given number of elements
 in the array, the following function can be used, and it returns the
-pointer to the string.  The string is always NUL terminated, i.e., the
-maximum string length is one less than the passed element count.
+pointer to the string.  The resulting string is always NUL terminated,
+i.e., the maximum string length is one less than the passed element
+count.
 
 ```c
 char s[20];
@@ -780,17 +801,26 @@ va_fprintf(stderr, "token=~.*qs", size, data);
 This prints `token="abc"`.
 
 An alternative way of controlling this is to pass a pointer to
-`va_arr_t` to the printer, which contains the data and size:
+`va_span_t` to the printer, which contains the data and size:
 
 ```c
 char const *data = "abcdef";
 size_t size = 3;
-va_fprintf(stderr, "token=~qs", (&(va_arr_t){ size, data }));
+va_fprintf(stderr, "token=~qs", (&(va_span_t){ size, data }));
 ```
 
 This also prints `token="abc"`.
 
-There are similar types `va_arr16_t` and `va_arr32_t` for wide
+Note that strings specified by their size may contain U+0000 (NUL)
+characters, and they are quoted accordingly, if requested:
+
+```c
+va_fprintf(stderr, "token=~qs", (&(va_span_t){ 1, "" }));
+```
+
+This also prints `token="\000"`.
+
+There are similar types `va_span16_t` and `va_span32_t` for wide
 character strings.
 
 ### Computing String Lengths
@@ -1024,7 +1054,7 @@ These are suffixed to find the vtab object for writing:
 - quotation of unprintable characters <U+0080 is done using
   octal quotation.
 - quotation of some characters in special notation:
-  `\t`, `\r`, `\n`, `\b`, `\f`, `\'`, `\"`, `\\`.
+  `\t`, `\r`, `\n`, `\'`, `\"`, `\\`.
 - `0` flag quotes all non-ASCII using `\u` or `\U`.  Note
   that `\x` is not used, because it may not terminate, so
   quoting `\x1` plus `1` is more complicated.
@@ -1057,7 +1087,7 @@ Examples:
 - Like C, but always uses `\u` or `\U` and never octal
 - `NULL` strings print as `null`, and do not set the
   `VA_E_NULL` error, in contrast to unquoted printing.
-- the `z` flag is ignored.
+- the `z` flag is ignored (no `u` or `U` prefixes are printed).
 
 Examples:
 
@@ -1079,6 +1109,7 @@ Examples:
 - when printing strings, this selects Shell quoted format
 - `NULL` strings print as empty string, and set the
   `VA_E_NULL` error, just like unquoted printing.
+- the empty string is printed as `''`
 - uses single quotes if necessary
 - without `#`, prints quotation marks if necessary
 - others print no quotation marks for in-string printing
@@ -1090,11 +1121,185 @@ Examples:
 Examples:
 
 - `va_printf("~ks", "ab")` prints `ab`.
+- `va_printf("~ks", "")` prints `''`.
+- `va_printf("~#ks", "")` prints ``.
 - `va_printf("~ks", "a b")` prints `'a b'`.
 - `va_printf("~ks", "a'b")` prints `'a'\''b'`.
 - `va_printf("~#ks", "a'b")` prints `a'\''b`.
 - `va_printf("~ka", (void*)18)` prints `0x12` (on normal machines)
 - `va_printf("~ka", 18)` prints `18`
+
+### User-Defined Quotation
+
+The quotation mechanism of the library can be extended by own
+quotation techniques.  The API for this is currently preliminary
+and may change.
+
+For implementing custom quotation, the `impl.h` header file needs to
+be included to get access to the internal programming API:
+
+```c
+#include <va_print/impl.h>
+```
+
+There is a definition of a struct `va_quotation_t` which has three
+entries to be defined for a quotation mechanism:
+
+- `unsigned delim[2]`: the delimiter with which to quote. array index [0]
+  is used for characters and index [1] is used for string
+  quotation.  The `VA_DELIM(prefix, frontquote, backquote)` macro constructs
+  an entry.  The quotation characters `frontquote` and `backquot` must be
+  in the BMP, i.e., smaller than or equal to `U+FFFF`.  The `prefix` character
+  must be smaller than or equal to U+00FF.  If it is 0xff, then the
+  prefix is selected if the `z` modifier is used based on the string character
+  type: empty for `char`, `u` for `char16_t` and `U` for `char32_t`.
+
+- `bool (*check_quote)(va_stream_t *s, unsigned c)`: if NULL, quotation is
+  always used. If non-NULL, this function is used on each character of the
+  string to check whether quotation is needed.  If the function returns
+  non-false for any of the characters, then quotation is needed.
+
+- `bool (*check_flush)(va_stream_t *s)`: if non-NULL, will be invoked at the
+  end of the string quotation check (only if check_quote is non-NULL) to
+  check again whether quotation is needed.  `check_quote` and `check_flush`
+  may use `s->qctxt` for storing some state, e.g., for detecting and empty
+  string (which needs quotation in Shell quotation).
+
+- `void (*render_quote)(va_stream_t *s, unsigned ch)`: for the actual
+  quotation of a character.  This must invoke one of the `va_stream_render*()`
+  functions for writing the quoted representation of the character into
+  the output stream.  The renderer can store context in `s->qctxt`, an
+  `unsigned`, during quotation rendering.  It is initialised to `0`
+  when rendering starts.
+
+- `void (*render_flush)(va_stream_t *s)`: callback for the quotation to
+  signal the end of the quoted string.  Maybe NULL if not needed.
+
+There are the following rendering functions for the `render_quote` method:
+
+- `va_stream_render(s,c)`: prints the character verbatim into the output
+  stream.  Note that this cannot be done manually by a different function,
+  because this function also contains the logic for counting string
+  widths, etc.
+- `va_stream_render_quote_u(s,c)`: prints as `\u0123` or `\U01234567` in
+  hexadecimal notation
+- `va_stream_render_quote_oct(s,c)`: prints as `\012` in octal notation.
+- `va_stream_render_quote_brace(s,c)`: prints as `{01234567}`, skipping
+  unnecessary zero digits, in hexadecimal notation.
+
+For setting a quotation technique, a `va_quotation_t` needs to be
+initialised and set using `va_quotation_set()`.
+
+```c
+static va_quotation_t const my_quotation = {
+    .delim = { VA_DELIM(0, '<', '>'), VA_DELIM(0, '|', '|') },
+    .render_quote = my_render_quote,
+};
+void my_init(void)
+{
+    va_quotation_t const *old = va_quotation_set(VA_QUOTE_qq, &my_quotation);
+}
+```
+
+This sets the `qq` prefix to use `my_quotation` as a quotation method.
+There are currently 8 different quotation method slots:
+
+- `0`: the default if no `q`, `Q`, `k` or `K` modifier is specified
+- `VA_QUOTE_q`: used if the modifier `q` is given
+- `VA_QUOTE_Q`: used if the modifier `Q` is given
+- `VA_QUOTE_k`: used if the modifier `k` is given
+- `VA_QUOTE_K`: used if the modifier `K` is given
+- `VA_QUOTE_qq`: used if the modifier `qq` is given
+- `VA_QUOTE_QQ`: used if the modifier `QQ` is given
+- `VA_QUOTE_kk`: used if the modifier `kk` is given
+
+The prefixes `q`, `k`, and `Q` are predefined as described in the
+previous sections.  The others do not quote by default and are free
+for adding user quotation methods.  Note that is possible to set
+quotation 0 so that it is used when no quotation modifier is given.
+
+## User Defined Printers
+
+For user types, printers can be defined so that you do not need to
+print into an intermediate string buffer, but you can directly print
+into the output stream.  This saves space for the temporary string
+buffer and avoids thinking about buffer sizes.
+
+The library provides the type `va_print_t*` that can be passed as an
+argument to the printing functions instead of the value itself.  This
+provides the library with a user-defined callback for printing, and
+also encapsulates the value to be printed.
+
+`va_print_t` has a callback function `void (*print)(va_stream_t *,
+va_print_t*)` that the user can fill in to print the user value.  The
+function can make use of `va_iprintf` to stringify the value.  The
+original stream's format is passed via `width`, `prec`, and `opt`
+value in the `va_print_t` struct so that the printer can query them.
+
+To define a printer for a custom type, a derived struct of
+`va_print_t` can be used to encapsulate the value, or the provided
+`value` can be used to store store a pointer you your value into
+`va_print_t::value` if that is sufficient information.  E.g., for a
+simple pair of integers:
+
+```C
+typedef struct {
+    unsigned a,b;
+} my_pair_t;
+```
+
+a printing function is defined for values of this user type:
+
+```C
+static void my_print_pair(va_stream_t *s, va_print_t *p)
+{
+    my_pair_t const *v = p->value;
+    va_iprintf(s, "(.a=~s .b=~s)", v->a, v->b);
+}
+```
+
+When this is in place, to make the invocation easy, it is a good idea
+to encapsulate the creation of a temporary `va_print_t` into a macro.
+The following macro uses an `({...})` block to implement a type check,
+because `va_print_t::value` is a void pointer.
+
+```C
+#define P_PAIR(_v) (&VA_PRINT(&my_print_pair,({my_pair_t const *v_=(v); v_;}))
+```
+
+With these definitions, values of the user type can be printed:
+
+```C
+my_pair_t pair = { 1, 2 };
+va_fprintf(stderr, "pair=~s\n", P_PAIR(&pair));
+```
+
+This prints `pair=(.a=1 .b=2)` with the above definitions.
+
+The custom printer framework handles width and quotation just like with
+normal string types.
+
+```C
+va_fprintf(stderr, "quote(pair)=~-10qs\n", P_PAIR(&pair));
+```
+
+In contrast to the width, alignment, and quotation, The print
+precision is not handled by the framework -- the print function needs
+to handle it, because the semantics of a precision depends on the
+type.  Also, `NULL` values, are not handled specially, but such values
+are printed via the normal mechanism -- the framework does not examine
+the `va_print_t::value` at all.
+
+Different print formats must be handled by the user print function,
+e.g., for printing the type or a pointer values -- nothing of this is
+done by the framework.  E.g., with `VA_BGET(p->opt, VA_OPT_MODE)`, the
+mode can be queries and one of the `VA_MODE_*` constants can be
+checked.  See `va_print/impl.h` for the implementation API to access
+the format options.
+
+In the `P_PAIR` macro above, one could apply some `_Generic` magic to
+select the right printer for a given object type, maybe even to
+improve on the `({...})` type checking.
 
 ## Extensions
 

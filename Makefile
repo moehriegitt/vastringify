@@ -63,9 +63,10 @@ CPPFLAGS.dep := \
 CPPFLAGS.inc := \
     -I./include
 
-CPPFLAGS := \
+CPPFLAGS = \
     $(filter-out $(NO_FLAGS), \
         $(CPPFLAGS.dep) \
+        $(CPPFLAGS.stack) \
         $(CPPFLAGS.inc) \
         $(MORE_CPPFLAGS))
 
@@ -93,8 +94,7 @@ all:
 
 all: \
     out/libvastringify.a \
-    out/test1.x \
-    out/test3.x
+    out/test1.x
 
 test: \
     out/test2-readme.o
@@ -106,7 +106,6 @@ out/test2-readme.c: \
 	perl ./example2c.pl $< $@
 
 out/test1.x: out/test1.o out/libvastringify.a
-out/test3.x: out/test3.o out/libvastringify.a
 
 LIB_O := \
     out/core.o \
@@ -162,6 +161,9 @@ out/%.o: src/%.c
 	@mkdir -p out
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -c -o $@
 
+%.s: %.o
+	true
+
 %.o: %.c
 	@mkdir -p out
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -c -o $@
@@ -191,7 +193,7 @@ clean:
 distclean: clean
 
 .PHONY: test
-test: test1 test3
+test: test1
 
 .PHONY: test1
 test1: all
@@ -199,11 +201,8 @@ test1: all
 	# cat test.out
 	perl -n cmp.pl test.out
 
-.PHONY: test3
-test3: all
-	$(EXECUTE) ./out/test3.x
-
 .PHONY: stack
+stack: CPPFLAGS.stack:=-DVA_STACK
 stack: $(LIB_O:.o=.png) $(LIB_O:.o=.dot)  $(LIB_O:.o=.dot)
 
 out/%.dot: out/%.s

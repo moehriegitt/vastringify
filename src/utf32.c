@@ -15,14 +15,16 @@ va_read_iter_vtab_t const va_char32_p_read_vtab_utf32 = {
     "char32_t*",
     va_char32_p_take_utf32,
     va_char32_p_end,
+    false,
     'U',
     {0}
 };
 
-va_read_iter_vtab_t const va_arr32_p_read_vtab_utf32 = {
+va_read_iter_vtab_t const va_span32_p_read_vtab_utf32 = {
     "char32_t*",
-    va_arr32_p_take_utf32,
+    va_span32_p_take_utf32,
     va_char32_p_end,
+    true,
     'U',
     {0}
 };
@@ -35,11 +37,16 @@ extern unsigned va_char32_p_take_utf32(
     void const *end)
 {
     assert(iter->cur != NULL);
+    if (iter->cur == end) {
+        return VA_U_EOT;
+    }
     char32_t const *s = iter->cur;
-    unsigned c0 = (iter->cur == end) ? 0 : *s;
+    unsigned c0 = *s;
     if (c0 == 0) {
-        /* end of string */
-        return 0;
+        /* possible end of string */
+        if (!iter->vtab->has_size) {
+            return VA_U_EOT;
+        }
     }
 
     iter->cur = (s + 1);
@@ -130,33 +137,33 @@ extern va_stream_t *va_xprintf_last_char32_pp_utf32(
     return va_xprintf_char32_pp_utf32(s,x);
 }
 
-extern unsigned va_arr32_p_take_utf32(
+extern unsigned va_span32_p_take_utf32(
     va_read_iter_t *iter_super,
     void const *end)
 {
     assert(iter_super->cur != NULL);
-    va_read_iter_end_t *iter= va_boxof(*iter, iter_super, super);
+    va_read_iter_end_t *iter= va_boxof(iter_super, *iter, super);
     if (iter_super->cur == iter->end) {
-        return 0;
+        return VA_U_EOT;
     }
     return va_char32_p_take_utf32(iter_super, end);
 }
 
-extern va_stream_t *va_xprintf_arr32_p_utf32(
+extern va_stream_t *va_xprintf_span32_p_utf32(
     va_stream_t *s,
-    va_arr32_t const *x)
+    va_span32_t const *x)
 {
     va_read_iter_end_t iter = {
-        .super = VA_READ_ITER(&va_arr32_p_read_vtab_utf32, x->data),
+        .super = VA_READ_ITER(&va_span32_p_read_vtab_utf32, x->data),
         .end = x->data + x->size
     };
     return va_xprintf_iter(s, &iter.super);
 }
 
-extern va_stream_t *va_xprintf_last_arr32_p_utf32(
+extern va_stream_t *va_xprintf_last_span32_p_utf32(
     va_stream_t *s,
-    va_arr32_t const *x)
+    va_span32_t const *x)
 {
     s->opt |= VA_OPT_LAST;
-    return va_xprintf_arr32_p_utf32(s,x);
+    return va_xprintf_span32_p_utf32(s,x);
 }

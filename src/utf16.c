@@ -15,37 +15,41 @@ va_read_iter_vtab_t const va_char16_p_read_vtab_utf16 = {
     "char16_t*",
     va_char16_p_take_utf16,
     va_char16_p_end,
+    false,
     'u',
     {0}
 };
 
-va_read_iter_vtab_t const va_arr16_p_read_vtab_utf16 = {
+va_read_iter_vtab_t const va_span16_p_read_vtab_utf16 = {
     "char16_t*",
-    va_arr16_p_take_utf16,
+    va_span16_p_take_utf16,
     va_char16_p_end,
-    'U',
+    true,
+    'u',
     {0}
 };
 
 /* ********************************************************************** */
 /* static functions */
 
-static int iter_nth(
-    unsigned *res,
+static bool iter_nth(
+    unsigned *result,
     va_read_iter_t *iter,
     void const *e,
     unsigned n)
 {
     char16_t const *i = iter->cur;
     i += n;
-
     if (i == e) {
-        *res = 0;
-        return 0;
+        *result = VA_U_EOT;
+        return false;
     }
-
-    *res = *i;
-    return 1;
+    if ((*i == 0) && !iter->vtab->has_size) {
+        *result = VA_U_EOT;
+        return true;
+    }
+    *result = *i;
+    return true;
 }
 
 static void iter_advance(
@@ -68,9 +72,9 @@ extern unsigned va_char16_p_take_utf16(
     /* word 0 */
     unsigned c0;
     (void)iter_nth(&c0, iter, end, 0);
-    if (c0 == 0) {
+    if (c0 == VA_U_EOT) {
         /* end of string */
-        return 0;
+        return VA_U_EOT;
     }
     if ((c0 < 0xd800) || (c0 >= 0xe000)) {
         iter_advance(iter, 1);
@@ -83,7 +87,7 @@ extern unsigned va_char16_p_take_utf16(
 
     unsigned cx;
     if (!iter_nth(&cx, iter, end, 1)) {
-        return 0;
+        return VA_U_EOT;
     }
     if ((cx < 0xdc00) || (cx >= 0xe000)) {
         /* not a low surrogate */
@@ -180,33 +184,33 @@ extern va_stream_t *va_xprintf_last_char16_pp_utf16(
     return va_xprintf_char16_pp_utf16(s,x);
 }
 
-extern unsigned va_arr16_p_take_utf16(
+extern unsigned va_span16_p_take_utf16(
     va_read_iter_t *iter_super,
     void const *end)
 {
     assert(iter_super->cur != NULL);
-    va_read_iter_end_t *iter= va_boxof(*iter, iter_super, super);
+    va_read_iter_end_t *iter= va_boxof(iter_super, *iter, super);
     if (iter_super->cur == iter->end) {
-        return 0;
+        return VA_U_EOT;
     }
     return va_char16_p_take_utf16(iter_super, end);
 }
 
-extern va_stream_t *va_xprintf_arr16_p_utf16(
+extern va_stream_t *va_xprintf_span16_p_utf16(
     va_stream_t *s,
-    va_arr16_t const *x)
+    va_span16_t const *x)
 {
     va_read_iter_end_t iter = {
-        .super = VA_READ_ITER(&va_arr16_p_read_vtab_utf16, x->data),
+        .super = VA_READ_ITER(&va_span16_p_read_vtab_utf16, x->data),
         .end = x->data + x->size
     };
     return va_xprintf_iter(s, &iter.super);
 }
 
-extern va_stream_t *va_xprintf_last_arr16_p_utf16(
+extern va_stream_t *va_xprintf_last_span16_p_utf16(
     va_stream_t *s,
-    va_arr16_t const *x)
+    va_span16_t const *x)
 {
     s->opt |= VA_OPT_LAST;
-    return va_xprintf_arr16_p_utf16(s,x);
+    return va_xprintf_span16_p_utf16(s,x);
 }

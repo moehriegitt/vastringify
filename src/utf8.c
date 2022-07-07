@@ -15,37 +15,41 @@ va_read_iter_vtab_t const va_char_p_read_vtab_utf8 = {
     "char*",
     va_char_p_take_utf8,
     va_char_p_end,
+    false,
     0,
     {0}
 };
 
-va_read_iter_vtab_t const va_arr_p_read_vtab_utf8 = {
+va_read_iter_vtab_t const va_span_p_read_vtab_utf8 = {
     "char*",
-    va_arr_p_take_utf8,
+    va_span_p_take_utf8,
     va_char_p_end,
-    'U',
+    true,
+    0,
     {0}
 };
 
 /* ********************************************************************** */
 /* static functions */
 
-static int iter_nth(
-    unsigned *res,
+static bool iter_nth(
+    unsigned *result,
     va_read_iter_t *iter,
     void const *e,
     unsigned n)
 {
     unsigned char const *i = iter->cur;
     i += n;
-
     if (i == e) {
-        *res = 0;
-        return 0;
+        *result = VA_U_EOT;
+        return false;
     }
-
-    *res = *i;
-    return 1;
+    if ((*i == 0) && !iter->vtab->has_size) {
+        *result = VA_U_EOT;
+        return true;
+    }
+    *result = *i;
+    return true;
 }
 
 static void iter_advance(
@@ -66,9 +70,9 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
     /* byte 0 */
     unsigned c0;
     (void)iter_nth(&c0, iter, end, 0);
-    if (c0 == 0) {
+    if (c0 == VA_U_EOT) {
         /* end of string */
-        return 0;
+        return VA_U_EOT;
     }
     if (c0 < 0x80) {
         iter_advance(iter, 1);
@@ -89,12 +93,12 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
     }
 
     /* byte 1 */
-    unsigned cx;
+    unsigned cx;;
     if (!iter_nth(&cx, iter, end, 1)) {
-        return 0;
+        return VA_U_EOT;
     }
     if ((cx & 0xc0) != 0x80) {
-        /* not a continuation byte */
+        /* not a continuation byte; this also fails for VA_U_EOT */
         goto error;
     }
 
@@ -110,10 +114,13 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
         if (cx < 0x90) { goto error; }
         break;
 
-    /* surrogates: 3 byte seq: min 0xd800 = 0b1101_100000_000000 = ED 90 80 */
+    /* surrogates: 3 byte seq: min 0xd800 = 0b1101_100000_000000 = ED A0 80 */
     /* surrogates: 3 byte seq: max 0xdfff = 0b1101_111111_111111 = ED BF BF */
-    /* abs max: 4 byte seq: max 0x10ffff = 0b100_001111_111111_111111 = F4 8F BF BF */
     case 0xed:
+        if (cx >= 0xA0) { goto error; }
+        break;
+
+    /* abs max: 4 byte seq: max 0x10ffff = 0b100_001111_111111_111111 = F4 8F BF BF */
     case 0xf4:
         if (cx >= 0x90) { goto error; }
         break;
@@ -129,7 +136,7 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
 
     /* byte 2 */
     if (!iter_nth(&cx, iter, end, 2)) {
-        return 0;
+        return VA_U_EOT;
     }
     if ((cx & 0xc0) != 0x80) {
         VA_BSET(c0, VA_U_EMORE, 1); /* first byte was OK */
@@ -146,7 +153,7 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
 
     /* byte 3 */
     if (!iter_nth(&cx, iter, end, 3)) {
-        return 0;
+        return VA_U_EOT;
     }
     if ((cx & 0xc0) != 0x80) {
         VA_BSET(c0, VA_U_EMORE, 2); /* first two bytes were OK */
@@ -261,33 +268,33 @@ extern va_stream_t *va_xprintf_last_char_pp_utf8(
     return va_xprintf_char_pp_utf8(s, x);
 }
 
-extern unsigned va_arr_p_take_utf8(
+extern unsigned va_span_p_take_utf8(
     va_read_iter_t *iter_super,
     void const *end)
 {
     assert(iter_super->cur != NULL);
-    va_read_iter_end_t *iter= va_boxof(*iter, iter_super, super);
+    va_read_iter_end_t *iter= va_boxof(iter_super, *iter, super);
     if (iter_super->cur == iter->end) {
-        return 0;
+        return VA_U_EOT;
     }
     return va_char_p_take_utf8(iter_super, end);
 }
 
-extern va_stream_t *va_xprintf_arr_p_utf8(
+extern va_stream_t *va_xprintf_span_p_utf8(
     va_stream_t *s,
-    va_arr_t const *x)
+    va_span_t const *x)
 {
     va_read_iter_end_t iter = {
-        .super = VA_READ_ITER(&va_arr_p_read_vtab_utf8, x->data),
+        .super = VA_READ_ITER(&va_span_p_read_vtab_utf8, x->data),
         .end = x->data + x->size
     };
     return va_xprintf_iter(s, &iter.super);
 }
 
-extern va_stream_t *va_xprintf_last_arr_p_utf8(
+extern va_stream_t *va_xprintf_last_span_p_utf8(
     va_stream_t *s,
-    va_arr_t const *x)
+    va_span_t const *x)
 {
     s->opt |= VA_OPT_LAST;
-    return va_xprintf_arr_p_utf8(s,x);
+    return va_xprintf_span_p_utf8(s,x);
 }
