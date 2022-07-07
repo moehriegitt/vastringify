@@ -1184,8 +1184,6 @@ There are the following rendering functions for the `render_quote` method:
 - `va_stream_render_quote_u(s,c)`: prints as `\u0123` or `\U01234567` in
   hexadecimal notation
 - `va_stream_render_quote_oct(s,c)`: prints as `\012` in octal notation.
-- `va_stream_render_quote_brace(s,c)`: prints as `{01234567}`, skipping
-  unnecessary zero digits, in hexadecimal notation.
 
 For setting a quotation technique, a `va_quotation_t` needs to be
 initialised and set using `va_quotation_set()`.
@@ -1328,9 +1326,6 @@ improve on the `({...})` type checking.
 
 ## Differences
 
-- This library assumes that text is printed, not binary, so it will never
-  print '\0'.
-
 - The `~x` specifier also prints negative signed numbers, again, due
   to type-safety.  Reinterpreting them as unsigned can be done with
   the `z` flag.
@@ -1355,6 +1350,9 @@ improve on the `({...})` type checking.
 - for strings, the width counts the number of characters that are
   printed, before encoding them in the output encoding.  This
   includes all characters needed for quotation.
+
+- This library assumes that text is printed, not binary, so it will
+  output plain `\0`.
 
 ## Restrictions
 
@@ -1463,10 +1461,10 @@ improve on the `({...})` type checking.
 - Q: What about speed?
 
   A: Really?  This is about printing messages -- probably short ones
-  (less than a few kB, I'd guess).  So while I did try not to mess up,
+  (less than a few kB, I'd guess).  So while I did try not to mess it up,
   this is not optimised for speed.
 
-- Q: Is this safe than `printf`?
+- Q: Is this safer than `printf`?
 
   A: Definitely, I think.  There is absolutely no chance to give a
   wrong format specifier and access the stack (like `printf` does via
