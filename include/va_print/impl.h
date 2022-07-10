@@ -12,7 +12,7 @@
 #ifndef VA_PRINT_IMPL_H_
 #define VA_PRINT_IMPL_H_
 
-#include <stddef.h>
+#include <va_print/base.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -75,7 +75,7 @@ extern "C" {
 #define VA_OPT_MINUS  0x0008
 /** '=' modifier */
 #define VA_OPT_EQUAL  0x0010
-/** internal: simulate printing */
+/** internal: simulate printing (for counting) */
 #define VA_OPT_SIM    0x0020
 /** last argument: terminate format string reading */
 #define VA_OPT_LAST   0x0040
@@ -100,7 +100,7 @@ extern "C" {
 #define VA_MODE_CHAR  2
 #define VA_MODE_PTR   3
 #define VA_MODE_TYPE  4
-#define VA_MODE_X5    5
+#define VA_MODE_STAT  5
 #define VA_MODE_X6    6
 #define VA_MODE_X7    7
 
@@ -114,21 +114,13 @@ extern "C" {
 
 /** quotation */
 #define VA_OPT_QUOTE   (16, 7U)
-/** no quotation */
 #define VA_QUOTE_NONE  0
-/** 'k' modifier */
 #define VA_QUOTE_k     1
-/** 'q' modifier */
 #define VA_QUOTE_q     2
-/** 'Q' modifier */
 #define VA_QUOTE_Q     3
-/** 'K' modifier */
 #define VA_QUOTE_K     4
-/** 'kk' modifier */
 #define VA_QUOTE_kk    5
-/** 'qq' modifier */
 #define VA_QUOTE_qq    6
-/** 'QQ' modifier */
 #define VA_QUOTE_QQ    7
 
 /** size specifier mask: normal, 'h', or 'hh'*/

@@ -1025,6 +1025,9 @@ end_of_size:
         case 't': case 'T':
             VA_BSET(s->opt, VA_OPT_MODE, VA_MODE_TYPE);
             break;
+        case 'm': case 'M':
+            VA_BSET(s->opt, VA_OPT_MODE, VA_MODE_STAT);
+            break;
         case 'e': case 'E':
             VA_BSET(s->opt, VA_OPT_MODE, VA_MODE_B32);
             VA_BSET(s->opt, VA_OPT_BASE, 32);

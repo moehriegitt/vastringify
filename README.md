@@ -408,6 +408,15 @@ from the following list.
    arguments never print, and never consume a `~` format, but
    always just return the stream error.
 
+ - `m` prints the (error) status of the referenced item.  This is
+   for custom printers, and it is encoded as `VA_MODE_STAT`.
+   The pre-defined data types have no error values and thus no
+   error is printed.  Retrieving the stream error using `va_error_t`
+   is another topic, as it does not print anything.
+   The letter `m` is inspired by the GNU extension `%m`, which prints
+   `strerror(errno)`, which this library does not support natively
+   (to avoid depending on `<errno.h>`).
+
  - `~` prints `~` characters.  By default, one is printed.  The
    width gives the number of tildes, e.g. `~5~` prints `~~~~~`,
    and `~0~` prints nothing.  `~*~` reads the width from an
