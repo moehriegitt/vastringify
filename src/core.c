@@ -807,6 +807,9 @@ static void render_sll(va_stream_t *s, long long x, unsigned sz)
     else if (x < 0) {
         prefix0 = '-';
     }
+    else if ((x == 0) && (s->prec == 0)) {
+        /* print no prefix in this special case */
+    }
     else if (VA_BGET(s->opt, VA_OPT_SIGN) == VA_SIGN_PLUS) {
         prefix0 = '+';
     }

@@ -285,11 +285,15 @@ the current library handles such format strings.
 
  - `-` selects to left flush instead of the default right flush.
 
- - ` ` (a space character U+0020) selects that a space is printed
-   in front of positive signed integers.
+ - ` ` (a space character U+0020) selects that a space is printed in
+   front of positive signed integers. Nothing is printed if the
+   precision is 0 and the value is 0 (this is different compared to
+   the behaviour of C's printf).
 
  - `+` selects that a `+` is printed in front of positive signed
-   integers.
+   integers and zero.  Nothing is printed of the precision is 0 and
+   the value is 0 (this is different compared to the behaviour of C's
+   printf).
 
  - `=` specifies that the last value is printed again using this
    new format specifier.  This is meager replacement for the `$`
@@ -345,6 +349,10 @@ the current library handles such format strings.
 
  - `k` selects Bourne or Korn shell quotation.  There is a
    separate section below to explain this.
+
+ - `K` additional custom quotation
+
+ - `qq`, `QQ`, `kk` more additional custom quotations
 
 Note that most of the usual length specifiers (`l`, `ll`, etc.) known
 from C make no sense and are not recognised (nor ignored), because
@@ -403,7 +411,7 @@ from the following list.
    floating point support is added.
 
  - `t` prints the argument type in C syntax:
-   `int8_`..`int64_t`, `uint8_t`..`uint64_t`, `char*`,
+   `int8_t`..`int64_t`, `uint8_t`..`uint64_t`, `char*`,
    `char16_t*`, `char32_t*`, `void*`.  Note that `va_error_t*`
    arguments never print, and never consume a `~` format, but
    always just return the stream error.
@@ -1211,7 +1219,7 @@ void my_init(void)
 This sets the `qq` prefix to use `my_quotation` as a quotation method.
 There are currently 8 different quotation method slots:
 
-- `0`: the default if no `q`, `Q`, `k` or `K` modifier is specified
+- `0`: the default if no `q`, `Q`, `k`, or `K` modifier is specified
 - `VA_QUOTE_q`: used if the modifier `q` is given
 - `VA_QUOTE_Q`: used if the modifier `Q` is given
 - `VA_QUOTE_k`: used if the modifier `k` is given
@@ -1328,10 +1336,13 @@ improve on the `({...})` type checking.
   contain any `*`, because then the width/precision will be
   printed, not the last value, which is probably not what you want.
 
-- The `q`, `Q`, and `k` modifiers mark different kinds of quotation.
+- The `q`, `Q`, `k`, and `K` modifiers mark different kinds of quotation.
   `q` is for C, `Q` is for Java/JSON, and `k` for Bourne/Korn Shells.
 
 - The `t` format prints the input value type in C syntax.
+
+- The `m` format is a custom format to print the status of an object,
+  usually for the error status.
 
 ## Differences
 
@@ -1361,7 +1372,7 @@ improve on the `({...})` type checking.
   includes all characters needed for quotation.
 
 - This library assumes that text is printed, not binary, so it will
-  output plain `\0`.
+  not output plain `\0`.
 
 ## Restrictions
 
