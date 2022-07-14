@@ -291,7 +291,7 @@ the current library handles such format strings.
    the behaviour of C's printf).
 
  - `+` selects that a `+` is printed in front of positive signed
-   integers and zero.  Nothing is printed of the precision is 0 and
+   integers and zero.  Nothing is printed if the precision is 0 and
    the value is 0 (this is different compared to the behaviour of C's
    printf).
 

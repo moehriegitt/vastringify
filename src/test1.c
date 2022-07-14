@@ -316,6 +316,22 @@ int main(void)
     PRINTF1("~+3.0s", "   ",  0);
     PRINTF1("~+3.0s", " +1", +1);
 
+    PRINTF1("~+.s", "-1", -1);
+    PRINTF1("~+.s", "",  0);
+    PRINTF1("~+.s", "+1", +1);
+
+    PRINTF1("~+1.s", "-1", -1);
+    PRINTF1("~+1.s", " ",  0);
+    PRINTF1("~+1.s", "+1", +1);
+
+    PRINTF1("~+2.s", "-1", -1);
+    PRINTF1("~+2.s", "  ",  0);
+    PRINTF1("~+2.s", "+1", +1);
+
+    PRINTF1("~+3.s", " -1", -1);
+    PRINTF1("~+3.s", "   ",  0);
+    PRINTF1("~+3.s", " +1", +1);
+
     PRINTF1("~a", "\ufeffh\uc0c0g\u201ch", "\ufeffh\uc0c0g\u201ch");
 
     PRINTF1("~c", "\u201c", (short)0x201c);
