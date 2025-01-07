@@ -22,8 +22,9 @@ extern "C" {
 /* extern objects */
 
 extern va_read_iter_vtab_t const va_char16_p_read_vtab_utf16;
-
 extern va_read_iter_vtab_t const va_span16_p_read_vtab_utf16;
+extern va_read_iter_vtab_t const va_char16_p_read_vtab_utf16_chunk;
+extern va_read_iter_vtab_t const va_span16_p_read_vtab_utf16_chunk;
 
 /* ********************************************************************** */
 /* extern functions */
@@ -86,6 +87,12 @@ extern va_stream_t *va_xprintf_span16_p_utf16(
 extern va_stream_t *va_xprintf_last_span16_p_utf16(
     va_stream_t *,
     va_span16_t const *);
+
+extern void va_char16_p_set_chunk_mode(
+    va_read_iter_t *iter);
+
+extern void va_span16_p_set_chunk_mode(
+    va_read_iter_t *iter);
 
 /* ********************************************************************** */
 /* epilogue */

@@ -615,24 +615,281 @@ int main(void)
 
     PRINTF2("\"\\ufffd\"", "~0qa", U"\xd801");
 
+#define ITER(_c) (&VA_READ_ITER(&va_char_p_read_vtab_utf8, (_c)))
+
     PRINTF2("\"\\ufffd\"", "~0qa", "\xc3");
-    PRINTF2("\"\"", "~0.1qa", "\xc3");
+    PRINTF2("\"\\ufffd\"", "~0.1qa", "\xc3");
+    PRINTF2("\"\"", "~0.1qa", ITER("\xc3"));
+    char const *siter = "\xc3";
+    PRINTF2("\"\\ufffd\"", "~0.1qa", siter);
+    PRINTF2("\"\"", "~0.1qa", &siter);
+    PRINTF2("\"\\ufffd\"", "~0.1qa", siter); /* also check that the pointer was not advanced */
+
+    /* Also try to trigger a weird bug (fixed 2025-01-07) that caused the
+     * UTF-8 decoder to skip across the end of the string. */
+    siter = "foo\xf4\xc3\x95oof";
+    PRINTF2("\"foo\\ufffd\"", "~0.4qa", siter);
+    PRINTF2("\"foo\"", "~0.4qa", &siter);
+
+    siter = "foo\xf4\xc3\xa5oof";
+    PRINTF2("\"foo\"", "~0.3qa", siter);
+    PRINTF2("\"foo\"", "~0.3qa", &siter);
+
+    siter = "foo\xf4\xc3\xa5oof";
+    PRINTF2("\"foo\\ufffd\\ufffd\"", "~0.5qa", siter);
+    PRINTF2("\"foo\\ufffd\"", "~0.5qa", &siter);
+
+    siter = "foo\xf4\xc3\xa5oof";
+    PRINTF2("\"foo\\ufffd\\u00e5\"", "~0.6qa", siter);
+    PRINTF2("\"foo\\ufffd\\u00e5\"", "~0.6qa", &siter);
+
+    siter = "\xf4\xc3\xa5oof";
+    PRINTF2("\"\\ufffd\"", "~0.1qa", siter);
+    PRINTF2("\"\"", "~0.1qa", &siter);
+
+    siter = "\xf4\xc3\xa5oof";
+    PRINTF2("\"\\ufffd\\ufffd\"", "~0.2qa", siter);
+    PRINTF2("\"\\ufffd\"", "~0.2qa", &siter);
+
+    siter = "\xf4\xc3\xa5oof";
+    PRINTF2("\"\\ufffd\\u00e5\"", "~0.3qa", siter);
+    PRINTF2("\"\\ufffd\\u00e5\"", "~0.3qa", &siter);
 
     PRINTF2("\"\\ufffd\"", "~0qa", "\xe3");
-    PRINTF2("\"\"", "~0.1qa", "\xe3");
+    PRINTF2("\"\\ufffd\"", "~0.1qa", "\xe3");
+    PRINTF2("\"\"", "~0.1qa", ITER("\xe3"));
     PRINTF2("\"\\ufffd\"", "~0qa", "\xe3\x80");
-    PRINTF2("\"\"", "~0.1qa", "\xe3\x80");
+    PRINTF2("\"\\ufffd\"", "~0.1qa", "\xe3\x80");
+    PRINTF2("\"\"", "~0.1qa", ITER("\xe3\x80"));
 
     PRINTF2("\"\\ufffd\"", "~0qa", "\xf1");
-    PRINTF2("\"\"", "~0.1qa", "\xf1");
+    PRINTF2("\"\\ufffd\"", "~0.1qa", "\xf1");
+    PRINTF2("\"\"", "~0.1qa", ITER("\xf1"));
     PRINTF2("\"\\ufffd\"", "~0qa", "\xf1\x80");
-    PRINTF2("\"\"", "~0.1qa", "\xf1\x80");
+    PRINTF2("\"\\ufffd\"", "~0.1qa", "\xf1\x80");
+    PRINTF2("\"\"", "~0.1qa", ITER("\xf1\x80"));
     PRINTF2("\"\\ufffd\"", "~0qa", "\xf1\x80\x80");
-    PRINTF2("\"\"", "~0.1qa", "\xf1\x80\x80");
+    PRINTF2("\"\\ufffd\"", "~0.1qa", "\xf1\x80\x80");
+    PRINTF2("\"\"", "~0.1qa", ITER("\xf1\x80\x80"));
+
+    /* Try to see that the maximum subpart constraint is obeyed to skip errors: the
+     * decoder is not allowed to eat away from a following valid UTF-8 sequences, and
+     * even stricter: must only eat otherwise well-formed prefixes.  This walks along
+     * Table 3-7 from Unicode (16), Section 3.9: well-formed UTF-8 sequences.
+     * This is not exhaustive, because that'd be a lot.
+     */
+    /* C0 (same as 80..BF, C1, F5..FF) */
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\x80\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\x80\xa0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\x80\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\x80\xc2\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\x80\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\x80\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\x80\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\x80\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\x80\xF5Z");
+
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xa0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xa0\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xa0\xa0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xa0\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xa0\xc2\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xa0\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xa0\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xa0\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xa0\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xa0\xF5Z");
+
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc0\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc0\xa0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc0\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xc0\xc2\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc0\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc0\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc0\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc0\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc0\xF5Z");
+
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xc1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc1\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc1\xa0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc1\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xc1\xc2\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc1\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc1\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc1\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc1\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc1\xF5Z");
+
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf5Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf5\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf5\xa0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf5\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xf5\xc2\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf5\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf5\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf5\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf5\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf5\xF5Z");
+    /* C2..DF */
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xc2Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc2\xc0Z");
+    PRINTF2("\"X\\u00a0Z\"", "~0qa", "X\xc2\xa0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc2\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xc2\xC2\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc2\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc2\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc2\xC2Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc2\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xc2\xF5Z");
+    /* E0..EC */
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe0Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe0\xa0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\xa0\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\x90\xc0Z");
+    PRINTF2("\"X\\ufffd\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\x90\x90Z");
+    PRINTF2("\"X\\u0820Z\"", "~0qa", "X\xe0\xa0\xa0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\xa0\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xe0\xa0\xC2\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\x8FZ");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\x90Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\x9FZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe0\xA0Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe0\xBFZ");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\xC2Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe0\xF5Z");
+    /* E1..EC */
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe2Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe2\x90Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe2\x90\xc0Z");
+    PRINTF2("\"X\\u2410Z\"", "~0qa", "X\xe2\x90\x90Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe2\x90\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xe2\x90\xC2\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe2\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe2\x8FZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe2\x90Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe2\x9FZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe2\xA0Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xe2\xBFZ");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe2\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe2\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe2\xC2Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe2\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xe2\xF5Z");
+    /* ED */
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xedZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xed\x90Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xed\x90\xc0Z");
+    PRINTF2("\"X\\ud410Z\"", "~0qa", "X\xed\x90\x90Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xed\x90\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xed\x90\xC2\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xed\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xed\x8FZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xed\x90Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xed\x9FZ");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xed\xA0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xed\xBFZ");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xed\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xed\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xed\xC2Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xed\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xed\xF5Z");
+    /* EE..EF */
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xeeZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xee\x90Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xee\x90\xc0Z");
+    PRINTF2("\"X\\ue410Z\"", "~0qa", "X\xee\x90\x90Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xee\x90\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xee\x90\xC2\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xee\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xee\x8FZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xee\x90Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xee\x9FZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xee\xA0Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xee\xBFZ");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xee\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xee\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xee\xC2Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xee\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xee\xF5Z");
+    /* F0 */
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf0Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf0\x90Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf0\x90\x90Z");
+    PRINTF2("\"X\\U00010410Z\"", "~0qa", "X\xf0\x90\x90\x90Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf0\x90\x90\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xf0\x90\x90\xC2\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf0\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf0\x8FZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf0\x90Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf0\x9FZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf0\xA0Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf0\xBFZ");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf0\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf0\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf0\xC2Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf0\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf0\xF5Z");
+    /* F1..F3 */
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf2Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf2\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf2\x80\x80Z");
+    PRINTF2("\"X\\U00080000Z\"", "~0qa", "X\xf2\x80\x80\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf2\x80\x80\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xf2\x80\x80\xC2\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf2\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf2\x8FZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf2\x90Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf2\x9FZ");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf2\xA0Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf2\xBFZ");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf2\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf2\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf2\xC2Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf2\xf4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf2\xF5Z");
+    /* F4 */
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf4Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf4\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf4\x80\x80Z");
+    PRINTF2("\"X\\U00100000Z\"", "~0qa", "X\xf4\x80\x80\x80Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf4\x80\x80\xC0Z");
+    PRINTF2("\"X\\ufffd\\u0080Z\"", "~0qa", "X\xf4\x80\x80\xC2\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf4\x80Z");
+    PRINTF2("\"X\\ufffdZ\"", "~0qa", "X\xf4\x8FZ");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf4\x90Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf4\x9FZ");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf4\xA0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf4\xBFZ");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf4\xC0Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf4\xC1Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf4\xC2Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf4\xF4Z");
+    PRINTF2("\"X\\ufffd\\ufffdZ\"", "~0qa", "X\xf4\xF5Z");
+
+#define ITER16(_c) (&VA_READ_ITER(&va_char16_p_read_vtab_utf16, (_c)))
 
     PRINTF2("\"\\ufffd\"", "~0qa", u"\xdc01");
-    PRINTF2("\"\"", "~0.1qa", u"\xd801");
+    PRINTF2("\"\\ufffd\"", "~0.1qa", u"\xd801");
+    PRINTF2("\"\"", "~0.1qa", ITER16(u"\xd801"));
     PRINTF2("\"\\ufffd\"", "~0qa", u"\xd801");
+
+    char16_t const *siter16 = u"\xd801";
+    PRINTF2("\"\\ufffd\"", "~0.1qa", siter16);
+    PRINTF2("\"\"", "~0.1qa", &siter16);
+    PRINTF2("\"\\ufffd\"", "~0.1qa", siter16);
+
+    /* try to trigger a similar bug we had with UTF8 for UTF16 (fixed 2024-01-08) */
+    siter16 = u"\xd800\xdc00\xd801oof";
+    PRINTF2("\"\\ufffd\"", "~0.1qa", (&(va_span16_t){ .data = siter16, .size = 6 }));
+    PRINTF2("\"\"", "~0.1qa", &siter16);
+    PRINTF2("\"\\ufffd\"", "~0.1qa", siter16);
 
     PRINTF2("\"\\000\"", "~0qa", (&(va_span_t){ .size = 1, .data = "" }));
     PRINTF2("'\\000'", "~0qc", 0);
@@ -871,13 +1128,15 @@ int main(void)
     /* UTF8/16 end of string handling */
     PRINTF2("abc", "~s", va_nprintf(4, "~s", "abcdefg"));
     PRINTF2("ab\xe2", "~s", va_nprintf(4, "~s", "ab\u201ccdefg"));
-    PRINTF2("ab", "~s", va_nprintf(4, "~.3s", "ab\u201ccdefg"));
+    PRINTF2("ab\xe2", "~s", va_nprintf(4, "~.3s", "ab\u201ccdefg"));
+    PRINTF2("ab", "~s", va_nprintf(4, "~.3s", ITER("ab\u201ccdefg")));
     PRINTF2("0xf", "~s", va_nprintf(4, "~#zx", -1));
 
     PRINTF2("abc", "~s", va_unprintf(4, "~s", "abcdefg"));
     PRINTF2("ab\u201c", "~s", va_unprintf(4, "~s", "ab\u201ccdefg"));
     PRINTF2("ab\ufffd", "~s", va_unprintf(4, "~s", "ab\U0010201ccdefg"));
-    PRINTF2("ab", "~s", va_unprintf(4, "~.3s", "ab\U0010201ccdefg"));
+    PRINTF2("ab\ufffd", "~s", va_unprintf(4, "~.3s", "ab\U0010201ccdefg"));
+    PRINTF2("ab", "~s", va_unprintf(4, "~.3s", ITER("ab\U0010201ccdefg")));
     PRINTF2("0xf", "~s", va_unprintf(4, "~#zx", -1));
 
     printf("%u;;1;%zu\n", __LINE__, va_zprintf(""));

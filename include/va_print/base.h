@@ -23,7 +23,7 @@ extern "C" {
 /* macros */
 
 /* misc */
-#define VA_CONCAT(A,B) VA_CONCAT1(A,B)
+#define VA_CONCAT(A,B)  VA_CONCAT1(A,B)
 #define VA_CONCAT1(A,B) VA_CONCAT2(A,B)
 #define VA_CONCAT2(A,B) A ## B
 
@@ -208,14 +208,22 @@ typedef struct {
     void const *(*end)(struct va_read_iter *, size_t size);
 
     /**
+     * Get the chunk mode iterator */
+    void (*set_chunk_mode)(struct va_read_iter *);
+
+    /**
      * Whether this is a size or NUL terminated string */
     unsigned char has_size;
+
+    /**
+     * Whether this uses chunk mode */
+    unsigned char chunk_mode;
 
     /**
      * C string indicator prefix character */
     unsigned char str_prefix;
 
-    char _pad[sizeof(void*)-2];
+    char _pad[sizeof(void*) - 3];
 } va_read_iter_vtab_t;
 
 /**

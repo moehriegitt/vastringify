@@ -15,6 +15,8 @@ va_read_iter_vtab_t const va_char_p_read_vtab_utf8 = {
     "char*",
     va_char_p_take_utf8,
     va_char_p_end,
+    va_char_p_set_chunk_mode,
+    false,
     false,
     0,
     {0}
@@ -24,10 +26,48 @@ va_read_iter_vtab_t const va_span_p_read_vtab_utf8 = {
     "char*",
     va_span_p_take_utf8,
     va_char_p_end,
+    va_span_p_set_chunk_mode,
+    true,
+    false,
+    0,
+    {0}
+};
+
+va_read_iter_vtab_t const va_char_p_read_vtab_utf8_chunk = {
+    "char*",
+    va_char_p_take_utf8,
+    va_char_p_end,
+    NULL,
+    false,
     true,
     0,
     {0}
 };
+
+va_read_iter_vtab_t const va_span_p_read_vtab_utf8_chunk = {
+    "char*",
+    va_span_p_take_utf8,
+    va_char_p_end,
+    NULL,
+    true,
+    true,
+    0,
+    {0}
+};
+
+extern void va_char_p_set_chunk_mode(
+    va_read_iter_t *iter)
+{
+    assert(iter->vtab == &va_char_p_read_vtab_utf8);
+    iter->vtab = &va_char_p_read_vtab_utf8_chunk;
+}
+
+extern void va_span_p_set_chunk_mode(
+    va_read_iter_t *iter)
+{
+    assert(iter->vtab == &va_span_p_read_vtab_utf8);
+    iter->vtab = &va_span_p_read_vtab_utf8_chunk;
+}
 
 /* ********************************************************************** */
 /* static functions */
@@ -95,7 +135,15 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
     /* byte 1 */
     unsigned cx;;
     if (!iter_nth(&cx, iter, end, 1)) {
-        return VA_U_EOT;
+        if (iter->vtab->chunk_mode) {
+            // stop before incomplete sequence
+            return VA_U_EOT;
+        }
+        else {
+            // one byte worked, so return it
+            iter_advance(iter, 1);
+            return c0 | VA_U_ENC_UTF8;
+        }
     }
     if ((cx & 0xc0) != 0x80) {
         /* not a continuation byte; this also fails for VA_U_EOT */
@@ -136,7 +184,14 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
 
     /* byte 2 */
     if (!iter_nth(&cx, iter, end, 2)) {
-        return VA_U_EOT;
+        if (iter->vtab->chunk_mode) {
+            return VA_U_EOT;
+        }
+        else {
+            // two bytes worked, so return them
+            iter_advance(iter, 2);
+            return c0 | VA_U_ENC_UTF8;
+        }
     }
     if ((cx & 0xc0) != 0x80) {
         VA_BSET(c0, VA_U_EMORE, 1); /* first byte was OK */
@@ -153,7 +208,14 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
 
     /* byte 3 */
     if (!iter_nth(&cx, iter, end, 3)) {
-        return VA_U_EOT;
+        if (iter->vtab->chunk_mode) {
+            return VA_U_EOT;
+        }
+        else {
+            // three bytes worked, so return them
+            iter_advance(iter, 3);
+            return c0 | VA_U_ENC_UTF8;
+        }
     }
     if ((cx & 0xc0) != 0x80) {
         VA_BSET(c0, VA_U_EMORE, 2); /* first two bytes were OK */
@@ -232,7 +294,7 @@ extern va_stream_t *va_xprintf_char_const_pp_utf8(
     char const **x)
 {
     va_read_iter_t iter = VA_READ_ITER(&va_char_p_read_vtab_utf8, *x);
-    (void)va_xprintf_iter(s, &iter);
+    (void)va_xprintf_iter_chunk(s, &iter);
     *x = iter.cur;
     return s;
 }
@@ -276,6 +338,10 @@ extern unsigned va_span_p_take_utf8(
     va_read_iter_end_t *iter= va_boxof(iter_super, *iter, super);
     if (iter_super->cur == iter->end) {
         return VA_U_EOT;
+    }
+    /* avoid reading past the end of the span if the end is inside an UTF-8 char */
+    if ((end == NULL) || (iter->end < end)) {
+        end = iter->end;
     }
     return va_char_p_take_utf8(iter_super, end);
 }

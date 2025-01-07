@@ -94,6 +94,13 @@ extern "C" {
  */
 #define va_printf(...) va_fprintf(stdout, __VA_ARGS__)
 
+/**
+ * Prints a formatted string into 'char' based stderr.
+ *
+ * Returns nothing.
+ */
+#define va_eprintf(...) va_fprintf(stderr, __VA_ARGS__)
+
 /* ********************************************************************** */
 /* types */
 

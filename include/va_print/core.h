@@ -94,7 +94,7 @@ extern "C" {
     long:fun##slong, \
     long long:fun##sll, \
     va_print_t *:fun##custom, \
-    va_read_iter_t *:fun##iter, \
+    va_read_iter_t *:fun##iter_chunk, \
     va_error_t *:fun##error_t_p, \
     default:fun##ptr)(s,x)
 
@@ -220,6 +220,7 @@ extern va_stream_t *va_xprintf_ptr(va_stream_t *, void const *);
 extern va_stream_t *va_xprintf_char(va_stream_t *, char x);
 extern va_stream_t *va_xprintf_error_t_p(va_stream_t *, va_error_t *x);
 
+extern va_stream_t *va_xprintf_iter_chunk(va_stream_t *, va_read_iter_t *);
 extern va_stream_t *va_xprintf_iter(va_stream_t *, va_read_iter_t *);
 extern va_stream_t *va_xprintf_custom(va_stream_t *, va_print_t *);
 
@@ -240,7 +241,7 @@ extern va_stream_t *va_xprintf_last_ptr(va_stream_t *, void const *);
 extern va_stream_t *va_xprintf_last_char(va_stream_t *, char x);
 extern va_stream_t *va_xprintf_last_error_t_p(va_stream_t *, va_error_t *x);
 
-extern va_stream_t *va_xprintf_last_iter(va_stream_t *, va_read_iter_t *);
+extern va_stream_t *va_xprintf_last_iter_chunk(va_stream_t *, va_read_iter_t *);
 extern va_stream_t *va_xprintf_last_custom(va_stream_t *, va_print_t *);
 
 /**

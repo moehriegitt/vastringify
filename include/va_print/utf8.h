@@ -21,8 +21,9 @@ extern "C" {
 /* extern objects */
 
 extern va_read_iter_vtab_t const va_char_p_read_vtab_utf8;
-
 extern va_read_iter_vtab_t const va_span_p_read_vtab_utf8;
+extern va_read_iter_vtab_t const va_char_p_read_vtab_utf8_chunk;
+extern va_read_iter_vtab_t const va_span_p_read_vtab_utf8_chunk;
 
 /* ********************************************************************** */
 /* extern functions */
@@ -113,6 +114,12 @@ extern va_stream_t *va_xprintf_span_p_utf8(
 extern va_stream_t *va_xprintf_last_span_p_utf8(
     va_stream_t *,
     va_span_t const *);
+
+extern void va_char_p_set_chunk_mode(
+    va_read_iter_t *iter);
+
+extern void va_span_p_set_chunk_mode(
+    va_read_iter_t *iter);
 
 /* ********************************************************************** */
 /* epilogue */

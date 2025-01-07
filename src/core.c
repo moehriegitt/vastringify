@@ -700,7 +700,9 @@ static va_read_iter_vtab_t const arr1_vtab_8 = {
     NULL,
     arr1_utf64_take,
     arr1_utf64_end,
+    NULL,
     true,
+    false,
     0,
     {0},
 };
@@ -709,7 +711,9 @@ static va_read_iter_vtab_t const arr1_vtab_16 = {
     NULL,
     arr1_utf64_take,
     arr1_utf64_end,
+    NULL,
     true,
+    false,
     'u',
     {0},
 };
@@ -718,7 +722,9 @@ static va_read_iter_vtab_t const arr1_vtab_32 = {
     NULL,
     arr1_utf64_take,
     arr1_utf64_end,
+    NULL,
     true,
+    false,
     'U',
     {0},
 };
@@ -1155,6 +1161,16 @@ extern va_stream_t *va_xprintf_iter(
     return s;
 }
 
+extern va_stream_t *va_xprintf_iter_chunk(
+    va_stream_t *s,
+    va_read_iter_t *x)
+{
+    if (x->vtab->set_chunk_mode != NULL) {
+        x->vtab->set_chunk_mode(x);
+    }
+    return va_xprintf_iter(s, x);
+}
+
 extern va_stream_t *va_xprintf_custom(
     va_stream_t *s,
     va_print_t *x)
@@ -1325,10 +1341,10 @@ extern va_stream_t *va_xprintf_last_char(va_stream_t *s, char x)
     return va_xprintf_char(s,x);
 }
 
-extern va_stream_t *va_xprintf_last_iter(va_stream_t *s, va_read_iter_t *x)
+extern va_stream_t *va_xprintf_last_iter_chunk(va_stream_t *s, va_read_iter_t *x)
 {
     s->opt |= VA_OPT_LAST;
-    return va_xprintf_iter(s,x);
+    return va_xprintf_iter_chunk(s,x);
 }
 
 extern va_stream_t *va_xprintf_last_custom(va_stream_t *s, va_print_t *x)

@@ -15,6 +15,8 @@ va_read_iter_vtab_t const va_char32_p_read_vtab_utf32 = {
     "char32_t*",
     va_char32_p_take_utf32,
     va_char32_p_end,
+    NULL,
+    false,
     false,
     'U',
     {0}
@@ -24,7 +26,9 @@ va_read_iter_vtab_t const va_span32_p_read_vtab_utf32 = {
     "char32_t*",
     va_span32_p_take_utf32,
     va_char32_p_end,
+    NULL,
     true,
+    false,
     'U',
     {0}
 };

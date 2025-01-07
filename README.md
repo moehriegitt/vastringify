@@ -66,6 +66,9 @@ va_Ufprintf(FILE *f, Char const *format, ...);
 void
 va_printf(Char const *format, ...);
 
+void
+va_eprintf(Char const *format, ...);
+
 va_stream_file_t
 VA_STREAM_FILE(FILE *f);
 
@@ -317,10 +320,42 @@ with their size passed as precision, even with multi-byte/multi-word
 encodings stored inside.  Alternatively, there is `va_span_t` for a
 string prefix parameter type.
 
-The input decoder will not read incomplete encodings at the end of
-limited strings, but will stop before.  If a pointer to a string
-pointer is passed, then the pointer will be updated so that it points
-to the next character, i.e., the one after the last one that was read.
+#### End of String and Encoding Errors
+
+The input decoder (e.g. for UTF-8) has two modes of operation,
+distinguished by how incomplete sequences at the end of the input
+stream are handled.
+
+In normal mode, the input decoder reads every byte up until the last
+one from the input stream.  Incomplete sequences at the end will be
+reported as decoding errors.
+
+In chunk mode, the input decoder stops before an incomplete sequence
+at the end, simply reporting the end of text.  Incomplete sequences
+will not be iterated into, so that the stream can be printed
+chunk-wise even if encoding sequences cross the boundary between two
+chunks.
+
+The mode is selected by the input type that is printed.  Normal mode
+is used by default.  To select chunk mode, an iterator
+(`va_read_iter_t`) or a pointer to a string (`char const **`) needs to
+be printed.  This is because only for iterators, the printer can
+report back how much data was read, which is required for chunk mode
+anyway, to know where to start to print the next chunk (which is where
+the decoder stopped for the previous chunk).  The caller can read the
+decoder stop position from the iterator.
+
+Setting up the `va_read_iter_t` manually is a bit of a mouthful, but
+it is not needed frequently, I presume, so there is no syntactic sugar
+for it.  E.g. to print a chunk of bytes from a `char* s` in UTF-8
+format in chunk mode, i.e., stopping before an incomplete sequence at the end,
+the following code can be used:
+
+```c
+va_read_iter_t iter = VA_READ_ITER(&va_char_p_read_vtab_utf8, s);
+va_eprintf("~s", &iter);
+```
+After that, `iter.cur` can be checked to see how many bytes were read.
 
 #### Integer Mask and Quotation Specifiers
 
@@ -485,14 +520,15 @@ _Generic.
    If the input decoder encounters an incomplete UTF-8 sequence right
    in front of the terminating `NUL` character, it will return the
    bytes of the incomplete sequence as decoding errors.  However, if a
-   precision, i.e., maximum string size is specified, it will stop
-   decoding before the incomplete sequence without a decoding error.
-   This way, strings can be printed in chunks without errors.  Using a
-   pointer to a string, the final string position, i.e., the first
-   byte of the incomplete sequence at the end, can be queried in order
-   to start a new string chunk with the incomplete sequence at the
-   beginning, followed by, hopefully, the missing bytes of the UTF-8
-   sequence from the next chunk.
+   precision, i.e., maximum string size is specified, it can be made
+   to stop decoding before the incomplete sequence without a decoding
+   error.  This way, strings can be printed in chunks without errors.
+   To trigger this behaviour, a pointer to a string or an iterator can
+   be used, so the final string position, i.e., the first byte of the
+   incomplete sequence at the end, can be queried in order to start a
+   new string chunk with the incomplete sequence at the beginning,
+   followed by, hopefully, the missing bytes of the UTF-8 sequence
+   from the next chunk.
 
  - `char16_t *`, `char16_t const *`: 16-bit character strings or
    arrays.  The default encoding is UTF-16, which can be
@@ -744,11 +780,12 @@ nothing.
 va_fprintf(stderr, "foo~s", msg);
 ```
 
-There is also `va_printf` that prints into `stdout`, and it also
-returns nothing.
+There is also `va_printf` that prints into `stdout` and `va_eprintf`
+that prints into `stderr`.  They also both return nothing.
 
 ```c
 va_printf("foo~s", msg);
+va_eprintf("foo~s", msg);
 ```
 
 To write `char16_t` or `char32_t` streams into files, the encodings
