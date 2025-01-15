@@ -131,11 +131,7 @@ extern unsigned va_char16_p_take_utf16(
             // stop before incomplete sequence
             return VA_U_EOT;
         }
-        else {
-            // one word worked, so return it
-            iter_advance(iter, 1);
-            return c0 | VA_U_ENC_UTF16;
-        }
+        goto error;
     }
     if ((cx < 0xdc00) || (cx >= 0xe000)) {
         /* not a low surrogate */

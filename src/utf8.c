@@ -119,7 +119,9 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
         return c0;
     }
     if (c0 <= 0xbf) {
-        /* stray continuation bytes: mark with ECONT bit */
+        /* stray continuation bytes: mark with ECONT bit (the caller
+         * can see from the EMORE whether this should be combined with
+         * the previous byte into one error) */
         iter_advance(iter, 1);
         return c0 | VA_U_ENC_UTF8 | VA_U_ECONT;
     }
@@ -139,11 +141,8 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
             // stop before incomplete sequence
             return VA_U_EOT;
         }
-        else {
-            // one byte worked, so return it
-            iter_advance(iter, 1);
-            return c0 | VA_U_ENC_UTF8;
-        }
+        // one byte worked, so return it
+        goto error;
     }
     if ((cx & 0xc0) != 0x80) {
         /* not a continuation byte; this also fails for VA_U_EOT */
@@ -187,11 +186,9 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
         if (iter->vtab->chunk_mode) {
             return VA_U_EOT;
         }
-        else {
-            // two bytes worked, so return them
-            iter_advance(iter, 2);
-            return c0 | VA_U_ENC_UTF8;
-        }
+        // two bytes worked, so return them
+        VA_BSET(c0, VA_U_EMORE, 1); /* first byte was OK */
+        goto error;
     }
     if ((cx & 0xc0) != 0x80) {
         VA_BSET(c0, VA_U_EMORE, 1); /* first byte was OK */
@@ -211,11 +208,9 @@ extern unsigned va_char_p_take_utf8(va_read_iter_t *iter, void const *end)
         if (iter->vtab->chunk_mode) {
             return VA_U_EOT;
         }
-        else {
-            // three bytes worked, so return them
-            iter_advance(iter, 3);
-            return c0 | VA_U_ENC_UTF8;
-        }
+        // three bytes worked, so return them
+        VA_BSET(c0, VA_U_EMORE, 2); /* first two bytes were OK */
+        goto error;
     }
     if ((cx & 0xc0) != 0x80) {
         VA_BSET(c0, VA_U_EMORE, 2); /* first two bytes were OK */
